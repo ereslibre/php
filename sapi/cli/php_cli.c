@@ -1159,6 +1159,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 int main(int argc, char *argv[])
 #endif
 {
+  printf("Hi there!\n");
+
 #if defined(PHP_WIN32)
 # ifdef PHP_CLI_WIN32_NO_CONSOLE
 	int argc = __argc;
