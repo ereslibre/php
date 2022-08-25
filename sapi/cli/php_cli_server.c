@@ -758,15 +758,7 @@ static void sapi_cli_server_log_write(int type, const char *msg) /* {{{ */
 			memmove(buf, "unknown", sizeof("unknown"));
 		}
 	}
-#ifdef HAVE_FORK
-	if (php_cli_server_workers_max > 1) {
-		fprintf(stderr, "[%ld] [%s] %s\n", (long) getpid(), buf, msg);
-	} else {
-		fprintf(stderr, "[%s] %s\n", buf, msg);
-	}
-#else
 	fprintf(stderr, "[%s] %s\n", buf, msg);
-#endif
 } /* }}} */
 
 static void sapi_cli_server_log_message(const char *msg, int syslog_type_int) /* {{{ */
@@ -1342,7 +1334,7 @@ static php_socket_t php_network_listen_socket(const char *host, int *port, int s
 		goto out;
 	}
 
-	if (listen(retval, SOMAXCONN)) {
+	if (listen(retval, 100)) {
 		err = php_socket_errno();
 		goto out;
 	}

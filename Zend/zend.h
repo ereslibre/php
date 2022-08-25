@@ -255,18 +255,10 @@ typedef size_t (*zend_write_func_t)(const char *str, size_t str_length);
 #define zend_bailout()		_zend_bailout(__FILE__, __LINE__)
 
 #define zend_try												\
-	{															\
-		JMP_BUF *__orig_bailout = EG(bailout);					\
-		JMP_BUF __bailout;										\
-																\
-		EG(bailout) = &__bailout;								\
-		if (SETJMP(__bailout)==0) {
-#define zend_catch												\
-		} else {												\
-			EG(bailout) = __orig_bailout;
+	{
+#define zend_catch \
+  // Something to try
 #define zend_end_try()											\
-		}														\
-		EG(bailout) = __orig_bailout;							\
 	}
 #define zend_first_try		EG(bailout)=NULL;	zend_try
 

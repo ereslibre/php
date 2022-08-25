@@ -383,74 +383,7 @@ static void _php_dns_free_res(struct __res_state *res) { /* {{{ */
 /* {{{ Check DNS records corresponding to a given Internet host name or IP address */
 PHP_FUNCTION(dns_check_record)
 {
-	HEADER *hp;
-	querybuf answer = {0};
-	char *hostname;
-	size_t hostname_len;
-	zend_string *rectype = NULL;
-	int type = DNS_T_MX, i;
-#if defined(HAVE_DNS_SEARCH)
-	struct sockaddr_storage from;
-	uint32_t fromsize = sizeof(from);
-	dns_handle_t handle;
-#elif defined(HAVE_RES_NSEARCH)
-	struct __res_state state;
-	struct __res_state *handle = &state;
-#endif
-
-	ZEND_PARSE_PARAMETERS_START(1, 2)
-		Z_PARAM_STRING(hostname, hostname_len)
-		Z_PARAM_OPTIONAL
-		Z_PARAM_STR(rectype)
-	ZEND_PARSE_PARAMETERS_END();
-
-	if (hostname_len == 0) {
-		zend_argument_value_error(1, "cannot be empty");
-		RETURN_THROWS();
-	}
-
-	if (rectype) {
-		if (zend_string_equals_literal_ci(rectype, "A")) type = DNS_T_A;
-		else if (zend_string_equals_literal_ci(rectype, "NS")) type = DNS_T_NS;
-		else if (zend_string_equals_literal_ci(rectype, "MX")) type = DNS_T_MX;
-		else if (zend_string_equals_literal_ci(rectype, "PTR")) type = DNS_T_PTR;
-		else if (zend_string_equals_literal_ci(rectype, "ANY")) type = DNS_T_ANY;
-		else if (zend_string_equals_literal_ci(rectype, "SOA")) type = DNS_T_SOA;
-		else if (zend_string_equals_literal_ci(rectype, "CAA")) type = DNS_T_CAA;
-		else if (zend_string_equals_literal_ci(rectype, "TXT")) type = DNS_T_TXT;
-		else if (zend_string_equals_literal_ci(rectype, "CNAME")) type = DNS_T_CNAME;
-		else if (zend_string_equals_literal_ci(rectype, "AAAA")) type = DNS_T_AAAA;
-		else if (zend_string_equals_literal_ci(rectype, "SRV")) type = DNS_T_SRV;
-		else if (zend_string_equals_literal_ci(rectype, "NAPTR")) type = DNS_T_NAPTR;
-		else if (zend_string_equals_literal_ci(rectype, "A6")) type = DNS_T_A6;
-		else {
-			zend_argument_value_error(2, "must be a valid DNS record type");
-			RETURN_THROWS();
-		}
-	}
-
-#if defined(HAVE_DNS_SEARCH)
-	handle = dns_open(NULL);
-	if (handle == NULL) {
-		RETURN_FALSE;
-	}
-#elif defined(HAVE_RES_NSEARCH)
-	memset(&state, 0, sizeof(state));
-	if (res_ninit(handle)) {
-			RETURN_FALSE;
-	}
-#else
-	res_init();
-#endif
-
-	i = php_dns_search(handle, hostname, C_IN, type, answer.qb2, sizeof answer);
-	php_dns_free_handle(handle);
-
-	if (i < 0) {
-		RETURN_FALSE;
-	}
-	hp = (HEADER *)&answer;
-	RETURN_BOOL(ntohs(hp->ancount) != 0);
+  RETURN_FALSE;
 }
 /* }}} */
 
@@ -474,12 +407,6 @@ static uint8_t *php_parserr(uint8_t *cp, uint8_t *end, querybuf *answer, int typ
 	int have_v6_break = 0, in_v6_break = 0;
 
 	ZVAL_UNDEF(subarray);
-
-	n = dn_expand(answer->qb2, end, cp, name, sizeof(name) - 2);
-	if (n < 0) {
-		return NULL;
-	}
-	cp += n;
 
 	CHECKCP(10);
 	GETSHORT(type, cp);
@@ -543,11 +470,6 @@ static uint8_t *php_parserr(uint8_t *cp, uint8_t *end, querybuf *answer, int typ
 			if (type == DNS_T_PTR) {
 				add_assoc_string(subarray, "type", "PTR");
 			}
-			n = dn_expand(answer->qb2, end, cp, name, (sizeof name) - 2);
-			if (n < 0) {
-				return NULL;
-			}
-			cp += n;
 			add_assoc_string(subarray, "target", name);
 			break;
 		case DNS_T_HINFO:
@@ -623,29 +545,7 @@ static uint8_t *php_parserr(uint8_t *cp, uint8_t *end, querybuf *answer, int typ
 			break;
 		case DNS_T_SOA:
 			add_assoc_string(subarray, "type", "SOA");
-			n = dn_expand(answer->qb2, end, cp, name, (sizeof name) -2);
-			if (n < 0) {
-				return NULL;
-			}
-			cp += n;
-			add_assoc_string(subarray, "mname", name);
-			n = dn_expand(answer->qb2, end, cp, name, (sizeof name) -2);
-			if (n < 0) {
-				return NULL;
-			}
-			cp += n;
-			add_assoc_string(subarray, "rname", name);
-			CHECKCP(5*4);
-			GETLONG(n, cp);
-			add_assoc_long(subarray, "serial", n);
-			GETLONG(n, cp);
-			add_assoc_long(subarray, "refresh", n);
-			GETLONG(n, cp);
-			add_assoc_long(subarray, "retry", n);
-			GETLONG(n, cp);
-			add_assoc_long(subarray, "expire", n);
-			GETLONG(n, cp);
-			add_assoc_long(subarray, "minimum-ttl", n);
+      return NULL;
 			break;
 		case DNS_T_AAAA:
 			tp = (uint8_t*)name;
@@ -750,12 +650,7 @@ static uint8_t *php_parserr(uint8_t *cp, uint8_t *end, querybuf *answer, int typ
 			tp[0] = '\0';
 			add_assoc_string(subarray, "ipv6", name);
 			if (cp < p + dlen) {
-				n = dn_expand(answer->qb2, end, cp, name, (sizeof name) - 2);
-				if (n < 0) {
-					return NULL;
-				}
-				cp += n;
-				add_assoc_string(subarray, "chain", name);
+        return NULL;
 			}
 			break;
 		case DNS_T_SRV:
@@ -767,12 +662,7 @@ static uint8_t *php_parserr(uint8_t *cp, uint8_t *end, querybuf *answer, int typ
 			add_assoc_long(subarray, "weight", n);
 			GETSHORT(n, cp);
 			add_assoc_long(subarray, "port", n);
-			n = dn_expand(answer->qb2, end, cp, name, (sizeof name) - 2);
-			if (n < 0) {
-				return NULL;
-			}
-			cp += n;
-			add_assoc_string(subarray, "target", name);
+      return NULL;
 			break;
 		case DNS_T_NAPTR:
 			CHECKCP(2*2);
@@ -803,12 +693,7 @@ static uint8_t *php_parserr(uint8_t *cp, uint8_t *end, querybuf *answer, int typ
 			add_assoc_stringl(subarray, "regex", (char*)cp, n);
 			cp += n;
 
-			n = dn_expand(answer->qb2, end, cp, name, (sizeof name) - 2);
-			if (n < 0) {
-				return NULL;
-			}
-			cp += n;
-			add_assoc_string(subarray, "replacement", name);
+      return NULL;
 			break;
 		default:
 			zval_ptr_dtor(subarray);
@@ -824,339 +709,14 @@ static uint8_t *php_parserr(uint8_t *cp, uint8_t *end, querybuf *answer, int typ
 /* {{{ Get any Resource Record corresponding to a given Internet host name */
 PHP_FUNCTION(dns_get_record)
 {
-	char *hostname;
-	size_t hostname_len;
-	zend_long type_param = PHP_DNS_ANY;
-	zval *authns = NULL, *addtl = NULL;
-	int type_to_fetch;
-	int dns_errno;
-#if defined(HAVE_DNS_SEARCH)
-	struct sockaddr_storage from;
-	uint32_t fromsize = sizeof(from);
-	dns_handle_t handle;
-#elif defined(HAVE_RES_NSEARCH)
-	struct __res_state state;
-	struct __res_state *handle = &state;
-#endif
-	HEADER *hp;
-	querybuf answer = {0};
-	uint8_t *cp = NULL, *end = NULL;
-	int n, qd, an, ns = 0, ar = 0;
-	int type, first_query = 1, store_results = 1;
-	bool raw = 0;
-
-	ZEND_PARSE_PARAMETERS_START(1, 5)
-		Z_PARAM_STRING(hostname, hostname_len)
-		Z_PARAM_OPTIONAL
-		Z_PARAM_LONG(type_param)
-		Z_PARAM_ZVAL(authns)
-		Z_PARAM_ZVAL(addtl)
-		Z_PARAM_BOOL(raw)
-	ZEND_PARSE_PARAMETERS_END();
-
-	if (authns) {
-		authns = zend_try_array_init(authns);
-		if (!authns) {
-			RETURN_THROWS();
-		}
-	}
-	if (addtl) {
-		addtl = zend_try_array_init(addtl);
-		if (!addtl) {
-			RETURN_THROWS();
-		}
-	}
-
-	if (!raw) {
-		if ((type_param & ~PHP_DNS_ALL) && (type_param != PHP_DNS_ANY)) {
-			zend_argument_value_error(2, "must be a DNS_* constant");
-			RETURN_THROWS();
-		}
-	} else {
-		if ((type_param < 1) || (type_param > 0xFFFF)) {
-			zend_argument_value_error(2, "must be between 1 and 65535 when argument #5 ($raw) is true");
-			RETURN_THROWS();
-		}
-	}
-
-	/* Initialize the return array */
-	array_init(return_value);
-
-	/* - We emulate an or'ed type mask by querying type by type. (Steps 0 - NUMTYPES-1 )
-	 *   If additional info is wanted we check again with DNS_T_ANY (step NUMTYPES / NUMTYPES+1 )
-	 *   store_results is used to skip storing the results retrieved in step
-	 *   NUMTYPES+1 when results were already fetched.
-	 * - In case of PHP_DNS_ANY we use the directly fetch DNS_T_ANY. (step NUMTYPES+1 )
-	 * - In case of raw mode, we query only the requested type instead of looping type by type
-	 *   before going with the additional info stuff.
-	 */
-
-	if (raw) {
-		type = -1;
-	} else if (type_param == PHP_DNS_ANY) {
-		type = PHP_DNS_NUM_TYPES + 1;
-	} else {
-		type = 0;
-	}
-
-	for ( ;
-		type < (addtl ? (PHP_DNS_NUM_TYPES + 2) : PHP_DNS_NUM_TYPES) || first_query;
-		type++
-	) {
-		first_query = 0;
-		switch (type) {
-			case -1: /* raw */
-				type_to_fetch = type_param;
-				/* skip over the rest and go directly to additional records */
-				type = PHP_DNS_NUM_TYPES - 1;
-				break;
-			case 0:
-				type_to_fetch = type_param&PHP_DNS_A     ? DNS_T_A     : 0;
-				break;
-			case 1:
-				type_to_fetch = type_param&PHP_DNS_NS    ? DNS_T_NS    : 0;
-				break;
-			case 2:
-				type_to_fetch = type_param&PHP_DNS_CNAME ? DNS_T_CNAME : 0;
-				break;
-			case 3:
-				type_to_fetch = type_param&PHP_DNS_SOA   ? DNS_T_SOA   : 0;
-				break;
-			case 4:
-				type_to_fetch = type_param&PHP_DNS_PTR   ? DNS_T_PTR   : 0;
-				break;
-			case 5:
-				type_to_fetch = type_param&PHP_DNS_HINFO ? DNS_T_HINFO : 0;
-				break;
-			case 6:
-				type_to_fetch = type_param&PHP_DNS_MX    ? DNS_T_MX    : 0;
-				break;
-			case 7:
-				type_to_fetch = type_param&PHP_DNS_TXT   ? DNS_T_TXT   : 0;
-				break;
-			case 8:
-				type_to_fetch = type_param&PHP_DNS_AAAA	 ? DNS_T_AAAA  : 0;
-				break;
-			case 9:
-				type_to_fetch = type_param&PHP_DNS_SRV   ? DNS_T_SRV   : 0;
-				break;
-			case 10:
-				type_to_fetch = type_param&PHP_DNS_NAPTR ? DNS_T_NAPTR : 0;
-				break;
-			case 11:
-				type_to_fetch = type_param&PHP_DNS_A6	 ? DNS_T_A6 : 0;
-				break;
-			case 12:
-				type_to_fetch = type_param&PHP_DNS_CAA ? DNS_T_CAA : 0;
-				break;
-			case PHP_DNS_NUM_TYPES:
-				store_results = 0;
-				continue;
-			default:
-			case (PHP_DNS_NUM_TYPES + 1):
-				type_to_fetch = DNS_T_ANY;
-				break;
-		}
-
-		if (type_to_fetch) {
-#if defined(HAVE_DNS_SEARCH)
-			handle = dns_open(NULL);
-			if (handle == NULL) {
-				zend_array_destroy(Z_ARR_P(return_value));
-				RETURN_FALSE;
-			}
-#elif defined(HAVE_RES_NSEARCH)
-		    memset(&state, 0, sizeof(state));
-		    if (res_ninit(handle)) {
-		    	zend_array_destroy(Z_ARR_P(return_value));
-				RETURN_FALSE;
-			}
-#else
-			res_init();
-#endif
-
-			n = php_dns_search(handle, hostname, C_IN, type_to_fetch, answer.qb2, sizeof answer);
-
-			if (n < 0) {
-				dns_errno = php_dns_errno(handle);
-				php_dns_free_handle(handle);
-				switch (dns_errno) {
-					case NO_DATA:
-					case HOST_NOT_FOUND:
-						continue;
-
-					case NO_RECOVERY:
-						php_error_docref(NULL, E_WARNING, "An unexpected server failure occurred.");
-						break;
-
-					case TRY_AGAIN:
-						php_error_docref(NULL, E_WARNING, "A temporary server error occurred.");
-						break;
-
-					default:
-						php_error_docref(NULL, E_WARNING, "DNS Query failed");
-				}
-				zend_array_destroy(Z_ARR_P(return_value));
-				RETURN_FALSE;
-			}
-
-			cp = answer.qb2 + HFIXEDSZ;
-			end = answer.qb2 + n;
-			hp = (HEADER *)&answer;
-			qd = ntohs(hp->qdcount);
-			an = ntohs(hp->ancount);
-			ns = ntohs(hp->nscount);
-			ar = ntohs(hp->arcount);
-
-			/* Skip QD entries, they're only used by dn_expand later on */
-			while (qd-- > 0) {
-				n = dn_skipname(cp, end);
-				if (n < 0) {
-					php_error_docref(NULL, E_WARNING, "Unable to parse DNS data received");
-					zend_array_destroy(Z_ARR_P(return_value));
-					php_dns_free_handle(handle);
-					RETURN_FALSE;
-				}
-				cp += n + QFIXEDSZ;
-			}
-
-			/* YAY! Our real answers! */
-			while (an-- && cp && cp < end) {
-				zval retval;
-
-				cp = php_parserr(cp, end, &answer, type_to_fetch, store_results, raw, &retval);
-				if (Z_TYPE(retval) != IS_UNDEF && store_results) {
-					add_next_index_zval(return_value, &retval);
-				}
-			}
-
-			if (authns || addtl) {
-				/* List of Authoritative Name Servers
-				 * Process when only requesting addtl so that we can skip through the section
-				 */
-				while (ns-- > 0 && cp && cp < end) {
-					zval retval;
-
-					cp = php_parserr(cp, end, &answer, DNS_T_ANY, authns != NULL, raw, &retval);
-					if (Z_TYPE(retval) != IS_UNDEF) {
-						add_next_index_zval(authns, &retval);
-					}
-				}
-			}
-
-			if (addtl) {
-				/* Additional records associated with authoritative name servers */
-				while (ar-- > 0 && cp && cp < end) {
-					zval retval;
-
-					cp = php_parserr(cp, end, &answer, DNS_T_ANY, 1, raw, &retval);
-					if (Z_TYPE(retval) != IS_UNDEF) {
-						add_next_index_zval(addtl, &retval);
-					}
-				}
-			}
-			php_dns_free_handle(handle);
-		}
-	}
+  RETURN_FALSE;
 }
 /* }}} */
 
 /* {{{ Get MX records corresponding to a given Internet host name */
 PHP_FUNCTION(dns_get_mx)
 {
-	char *hostname;
-	size_t hostname_len;
-	zval *mx_list, *weight_list = NULL;
-	int count, qdc;
-	u_short type, weight;
-	querybuf answer = {0};
-	char buf[MAXHOSTNAMELEN] = {0};
-	HEADER *hp;
-	uint8_t *cp, *end;
-	int i;
-#if defined(HAVE_DNS_SEARCH)
-	struct sockaddr_storage from;
-	uint32_t fromsize = sizeof(from);
-	dns_handle_t handle;
-#elif defined(HAVE_RES_NSEARCH)
-	struct __res_state state;
-	struct __res_state *handle = &state;
-#endif
-
-	ZEND_PARSE_PARAMETERS_START(2, 3)
-		Z_PARAM_STRING(hostname, hostname_len)
-		Z_PARAM_ZVAL(mx_list)
-		Z_PARAM_OPTIONAL
-		Z_PARAM_ZVAL(weight_list)
-	ZEND_PARSE_PARAMETERS_END();
-
-	mx_list = zend_try_array_init(mx_list);
-	if (!mx_list) {
-		RETURN_THROWS();
-	}
-
-	if (weight_list) {
-		weight_list = zend_try_array_init(weight_list);
-		if (!weight_list) {
-			RETURN_THROWS();
-		}
-	}
-
-#if defined(HAVE_DNS_SEARCH)
-	handle = dns_open(NULL);
-	if (handle == NULL) {
-		RETURN_FALSE;
-	}
-#elif defined(HAVE_RES_NSEARCH)
-	memset(&state, 0, sizeof(state));
-	if (res_ninit(handle)) {
-			RETURN_FALSE;
-	}
-#else
-	res_init();
-#endif
-
-	i = php_dns_search(handle, hostname, C_IN, DNS_T_MX, answer.qb2, sizeof(answer));
-	if (i < 0) {
-		php_dns_free_handle(handle);
-		RETURN_FALSE;
-	}
-	hp = (HEADER *)&answer;
-	cp = answer.qb2 + HFIXEDSZ;
-	end = answer.qb2 + i;
-	for (qdc = ntohs((unsigned short)hp->qdcount); qdc--; cp += i + QFIXEDSZ) {
-		if ((i = dn_skipname(cp, end)) < 0 ) {
-			php_dns_free_handle(handle);
-			RETURN_FALSE;
-		}
-	}
-	count = ntohs((unsigned short)hp->ancount);
-	while (--count >= 0 && cp < end) {
-		if ((i = dn_skipname(cp, end)) < 0 ) {
-			php_dns_free_handle(handle);
-			RETURN_FALSE;
-		}
-		cp += i;
-		GETSHORT(type, cp);
-		cp += INT16SZ + INT32SZ;
-		GETSHORT(i, cp);
-		if (type != DNS_T_MX) {
-			cp += i;
-			continue;
-		}
-		GETSHORT(weight, cp);
-		if ((i = dn_expand(answer.qb2, end, cp, buf, sizeof(buf)-1)) < 0) {
-			php_dns_free_handle(handle);
-			RETURN_FALSE;
-		}
-		cp += i;
-		add_next_index_string(mx_list, buf);
-		if (weight_list) {
-			add_next_index_long(weight_list, weight);
-		}
-	}
-	php_dns_free_handle(handle);
-	RETURN_BOOL(zend_hash_num_elements(Z_ARRVAL_P(mx_list)) != 0);
+  RETURN_FALSE;
 }
 /* }}} */
 #endif /* HAVE_FULL_DNS_FUNCS */

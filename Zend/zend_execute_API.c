@@ -1454,46 +1454,6 @@ static void zend_set_timeout_ex(zend_long seconds, bool reset_signals) /* {{{ */
 		zend_error_noreturn(E_ERROR, "Could not queue new timer");
 		return;
 	}
-#elif defined(HAVE_SETITIMER)
-	{
-		struct itimerval t_r;		/* timeout requested */
-		int signo;
-
-		if(seconds) {
-			t_r.it_value.tv_sec = seconds;
-			t_r.it_value.tv_usec = t_r.it_interval.tv_sec = t_r.it_interval.tv_usec = 0;
-
-# if defined(__CYGWIN__) || defined(__PASE__)
-			setitimer(ITIMER_REAL, &t_r, NULL);
-		}
-		signo = SIGALRM;
-# else
-			setitimer(ITIMER_PROF, &t_r, NULL);
-		}
-		signo = SIGPROF;
-# endif
-
-		if (reset_signals) {
-# ifdef ZEND_SIGNALS
-			zend_signal(signo, zend_timeout_handler);
-# else
-			sigset_t sigset;
-#  ifdef HAVE_SIGACTION
-			struct sigaction act;
-
-			act.sa_handler = zend_timeout_handler;
-			sigemptyset(&act.sa_mask);
-			act.sa_flags = SA_RESETHAND | SA_NODEFER;
-			sigaction(signo, &act, NULL);
-#  else
-			signal(signo, zend_timeout_handler);
-#  endif /* HAVE_SIGACTION */
-			sigemptyset(&sigset);
-			sigaddset(&sigset, signo);
-			sigprocmask(SIG_UNBLOCK, &sigset, NULL);
-# endif /* ZEND_SIGNALS */
-		}
-	}
 #endif /* HAVE_SETITIMER */
 }
 /* }}} */
@@ -1518,18 +1478,6 @@ void zend_unset_timeout(void) /* {{{ */
 			return;
 		}
 		tq_timer = NULL;
-	}
-#elif defined(HAVE_SETITIMER)
-	if (EG(timeout_seconds)) {
-		struct itimerval no_timeout;
-
-		no_timeout.it_value.tv_sec = no_timeout.it_value.tv_usec = no_timeout.it_interval.tv_sec = no_timeout.it_interval.tv_usec = 0;
-
-# if defined(__CYGWIN__) || defined(__PASE__)
-		setitimer(ITIMER_REAL, &no_timeout, NULL);
-# else
-		setitimer(ITIMER_PROF, &no_timeout, NULL);
-# endif
 	}
 #endif
 	zend_atomic_bool_store_ex(&EG(timed_out), false);

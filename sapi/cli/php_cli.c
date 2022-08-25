@@ -1321,51 +1321,7 @@ exit_loop:
 	SetConsoleCtrlHandler(php_cli_win32_ctrl_handler, TRUE);
 #endif
 
-	/* -e option */
-	if (use_extended_info) {
-		CG(compiler_options) |= ZEND_COMPILE_EXTENDED_INFO;
-	}
-
-	zend_first_try {
-#ifndef PHP_CLI_WIN32_NO_CONSOLE
-		if (sapi_module == &cli_sapi_module) {
-#endif
-			exit_status = do_cli(argc, argv);
-#ifndef PHP_CLI_WIN32_NO_CONSOLE
-		} else {
-			exit_status = do_cli_server(argc, argv);
-		}
-#endif
-	} zend_end_try();
-out:
-	if (ini_path_override) {
-		free(ini_path_override);
-	}
-	php_ini_builder_deinit(&ini_builder);
-	if (module_started) {
-		php_module_shutdown();
-	}
-	if (sapi_started) {
-		sapi_shutdown();
-	}
-#ifdef ZTS
-	tsrm_shutdown();
-#endif
-
-#if defined(PHP_WIN32)
-	(void)php_win32_cp_cli_restore();
-
-	if (using_wide_argv) {
-		PHP_WIN32_CP_FREE_ARRAY(argv, argc);
-		LocalFree(argv_wide);
-	}
-	argv = argv_save;
-#endif
-	/*
-	 * Do not move this de-initialization. It needs to happen right before
-	 * exiting.
-	 */
-	cleanup_ps_args(argv);
+ out:
 	exit(exit_status);
 }
 /* }}} */

@@ -1158,16 +1158,16 @@ ZEND_COLD void zenderror(const char *error) /* {{{ */
 ZEND_API ZEND_COLD ZEND_NORETURN void _zend_bailout(const char *filename, uint32_t lineno) /* {{{ */
 {
 
-	if (!EG(bailout)) {
-		zend_output_debug_string(1, "%s(%d) : Bailed out without a bailout address!", filename, lineno);
-		exit(-1);
-	}
+	/* if (!EG(bailout)) { */
+	/* 	zend_output_debug_string(1, "%s(%d) : Bailed out without a bailout address!", filename, lineno); */
+	/* 	exit(-1); */
+	/* } */
 	gc_protect(1);
 	CG(unclean_shutdown) = 1;
 	CG(active_class_entry) = NULL;
 	CG(in_compilation) = 0;
 	EG(current_execute_data) = NULL;
-	LONGJMP(*EG(bailout), FAILURE);
+	//LONGJMP(*EG(bailout), FAILURE);
 }
 /* }}} */
 

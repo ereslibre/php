@@ -924,9 +924,6 @@ PHPAPI void php_stat(zend_string *filename, int type, zval *return_value)
 		case S_IFDIR: RETURN_STRING("dir");
 		case S_IFBLK: RETURN_STRING("block");
 		case S_IFREG: RETURN_STRING("file");
-#if defined(S_IFSOCK) && !defined(PHP_WIN32)
-		case S_IFSOCK: RETURN_STRING("socket");
-#endif
 		}
 		php_error_docref(NULL, E_NOTICE, "Unknown file type (%d)", ssb.sb.st_mode&S_IFMT);
 		RETURN_STRING("unknown");

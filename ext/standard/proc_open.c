@@ -1224,8 +1224,6 @@ PHP_FUNCTION(proc_open)
 		php_error_docref(NULL, E_WARNING, "Fork failed: %s", strerror(errno));
 		goto exit_fail;
 	}
-#else
-# error You lose (configure should not have let you get here)
 #endif
 
 	/* We forked/spawned and this is the parent */

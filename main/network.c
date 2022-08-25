@@ -356,19 +356,7 @@ PHPAPI int php_network_connect_socket(php_socket_t sockfd,
 		error = PHP_TIMEOUT_ERROR_VALUE;
 	}
 
-	if (n > 0) {
-		len = sizeof(error);
-		/*
-		   BSD-derived systems set errno correctly
-		   Solaris returns -1 from getsockopt in case of error
-		   */
-		if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (char*)&error, &len) != 0) {
-			ret = -1;
-		}
-	} else {
-		/* whoops: sockfd has disappeared */
-		ret = -1;
-	}
+  ret = -1;
 
 ok:
 	if (!asynchronous) {
@@ -650,23 +638,6 @@ PHPAPI void php_network_populate_name_from_sockaddr(
 
 				break;
 #endif
-#ifdef AF_UNIX
-			case AF_UNIX:
-				{
-					struct sockaddr_un *ua = (struct sockaddr_un*)sa;
-
-					if (ua->sun_path[0] == '\0') {
-						/* abstract name */
-						int len = sl - sizeof(sa_family_t);
-						*textaddr = zend_string_init((char*)ua->sun_path, len, 0);
-					} else {
-						int len = strlen(ua->sun_path);
-						*textaddr = zend_string_init((char*)ua->sun_path, len, 0);
-					}
-				}
-				break;
-#endif
-
 		}
 
 	}
@@ -702,13 +673,6 @@ PHPAPI int php_network_get_sock_name(php_socket_t sock,
 	socklen_t sl = sizeof(sa);
 	memset(&sa, 0, sizeof(sa));
 
-	if (getsockname(sock, (struct sockaddr*)&sa, &sl) == 0) {
-		php_network_populate_name_from_sockaddr((struct sockaddr*)&sa, sl,
-				textaddr,
-				addr, addrlen
-				);
-		return 0;
-	}
 	return -1;
 
 }
@@ -862,35 +826,8 @@ php_socket_t php_network_connect_socket_to_host(const char *host, unsigned short
 				struct sockaddr_in6 in6;
 #endif
 			} local_address;
-			int local_address_len = 0;
 
-			if (sa->sa_family == AF_INET) {
-#ifdef HAVE_INET_PTON
-				if (inet_pton(AF_INET, bindto, &local_address.in4.sin_addr) == 1) {
-#else
-				if (inet_aton(bindto, &local_address.in4.sin_addr)) {
-#endif
-					local_address_len = sizeof(struct sockaddr_in);
-					local_address.in4.sin_family = sa->sa_family;
-					local_address.in4.sin_port = htons(bindport);
-					memset(&(local_address.in4.sin_zero), 0, sizeof(local_address.in4.sin_zero));
-				}
-			}
-#if HAVE_IPV6 && HAVE_INET_PTON
-			else { /* IPV6 */
-				if (inet_pton(AF_INET6, bindto, &local_address.in6.sin6_addr) == 1) {
-					local_address_len = sizeof(struct sockaddr_in6);
-					local_address.in6.sin6_family = sa->sa_family;
-					local_address.in6.sin6_port = htons(bindport);
-				}
-			}
-#endif
-#ifdef IP_BIND_ADDRESS_NO_PORT
-			{
-				int val = 1;
-				(void) setsockopt(sock, SOL_IP, IP_BIND_ADDRESS_NO_PORT, &val, sizeof(val));
-			}
-#endif
+			int local_address_len = 0;
 			if (local_address_len == 0) {
 				php_error_docref(NULL, E_WARNING, "Invalid IP Address: %s", bindto);
 			} else if (bind(sock, &local_address.common, local_address_len)) {
@@ -1006,10 +943,6 @@ PHPAPI int php_sockaddr_size(php_sockaddr_storage *addr)
 #if HAVE_IPV6
 	case AF_INET6:
 		return sizeof(struct sockaddr_in6);
-#endif
-#ifdef AF_UNIX
-	case AF_UNIX:
-		return sizeof(struct sockaddr_un);
 #endif
 	default:
 		return 0;

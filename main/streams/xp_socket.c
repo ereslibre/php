@@ -337,7 +337,7 @@ static int php_sockop_set_option(php_stream *stream, int option, int value, void
 
 				if (sock->socket == -1) {
 					alive = 0;
-				} else if ((value == 0 && ((MSG_DONTWAIT != 0) || !sock->is_blocked)) || php_pollfd_for(sock->socket, PHP_POLLREADABLE|POLLPRI, &tv) > 0) {
+				} else if ((value == 0 && ((MSG_DONTWAIT != 0) || !sock->is_blocked)) || php_pollfd_for(sock->socket, PHP_POLLREADABLE, &tv) > 0) {
 					/* the poll() call was skipped if the socket is non-blocking (or MSG_DONTWAIT is available) and if the timeout is zero */
 #ifdef PHP_WIN32
 					int ret;
@@ -401,9 +401,6 @@ static int php_sockop_set_option(php_stream *stream, int option, int value, void
 
 				case STREAM_XPORT_OP_SEND:
 					flags = 0;
-					if ((xparam->inputs.flags & STREAM_OOB) == STREAM_OOB) {
-						flags |= MSG_OOB;
-					}
 					xparam->outputs.returncode = sock_sendto(sock,
 							xparam->inputs.buf, xparam->inputs.buflen,
 							flags,
@@ -419,9 +416,6 @@ static int php_sockop_set_option(php_stream *stream, int option, int value, void
 
 				case STREAM_XPORT_OP_RECV:
 					flags = 0;
-					if ((xparam->inputs.flags & STREAM_OOB) == STREAM_OOB) {
-						flags |= MSG_OOB;
-					}
 					if ((xparam->inputs.flags & STREAM_PEEK) == STREAM_PEEK) {
 						flags |= MSG_PEEK;
 					}
@@ -557,22 +551,6 @@ static inline int parse_unix_address(php_stream_xport_param *xparam, struct sock
 	memset(unix_addr, 0, sizeof(*unix_addr));
 	unix_addr->sun_family = AF_UNIX;
 
-	/* we need to be binary safe on systems that support an abstract
-	 * namespace */
-	if (xparam->inputs.namelen >= sizeof(unix_addr->sun_path)) {
-		/* On linux, when the path begins with a NUL byte we are
-		 * referring to an abstract namespace.  In theory we should
-		 * allow an extra byte below, since we don't need the NULL.
-		 * BUT, to get into this branch of code, the name is too long,
-		 * so we don't care. */
-		xparam->inputs.namelen = sizeof(unix_addr->sun_path) - 1;
-		php_error_docref(NULL, E_NOTICE,
-			"socket path exceeded the maximum allowed length of %lu bytes "
-			"and was truncated", (unsigned long)sizeof(unix_addr->sun_path));
-	}
-
-	memcpy(unix_addr->sun_path, xparam->inputs.name, xparam->inputs.namelen);
-
 	return 1;
 }
 #endif
@@ -628,28 +606,6 @@ static inline int php_tcp_sockop_bind(php_stream *stream, php_netstream_data_t *
 	int portno, err;
 	long sockopts = STREAM_SOCKOP_NONE;
 	zval *tmpzval = NULL;
-
-#ifdef AF_UNIX
-	if (stream->ops == &php_stream_unix_socket_ops || stream->ops == &php_stream_unixdg_socket_ops) {
-		struct sockaddr_un unix_addr;
-
-		sock->socket = socket(PF_UNIX, stream->ops == &php_stream_unix_socket_ops ? SOCK_STREAM : SOCK_DGRAM, 0);
-
-		if (sock->socket == SOCK_ERR) {
-			if (xparam->want_errortext) {
-				xparam->outputs.error_text = strpprintf(0, "Failed to create unix%s socket %s",
-						stream->ops == &php_stream_unix_socket_ops ? "" : "datagram",
-						strerror(errno));
-			}
-			return -1;
-		}
-
-		parse_unix_address(xparam, &unix_addr);
-
-		return bind(sock->socket, (const struct sockaddr *)&unix_addr,
-			(socklen_t) XtOffsetOf(struct sockaddr_un, sun_path) + xparam->inputs.namelen);
-	}
-#endif
 
 	host = parse_ip_address(xparam, &portno);
 
@@ -710,32 +666,7 @@ static inline int php_tcp_sockop_connect(php_stream *stream, php_netstream_data_
 	zval *tmpzval = NULL;
 	long sockopts = STREAM_SOCKOP_NONE;
 
-#ifdef AF_UNIX
-	if (stream->ops == &php_stream_unix_socket_ops || stream->ops == &php_stream_unixdg_socket_ops) {
-		struct sockaddr_un unix_addr;
 
-		sock->socket = socket(PF_UNIX, stream->ops == &php_stream_unix_socket_ops ? SOCK_STREAM : SOCK_DGRAM, 0);
-
-		if (sock->socket == SOCK_ERR) {
-			if (xparam->want_errortext) {
-				xparam->outputs.error_text = strpprintf(0, "Failed to create unix socket");
-			}
-			return -1;
-		}
-
-		parse_unix_address(xparam, &unix_addr);
-
-		ret = php_network_connect_socket(sock->socket,
-				(const struct sockaddr *)&unix_addr, (socklen_t) XtOffsetOf(struct sockaddr_un, sun_path) + xparam->inputs.namelen,
-				xparam->op == STREAM_XPORT_OP_CONNECT_ASYNC, xparam->inputs.timeout,
-				xparam->want_errortext ? &xparam->outputs.error_text : NULL,
-				&err);
-
-		xparam->outputs.error_code = err;
-
-		goto out;
-	}
-#endif
 
 	host = parse_ip_address(xparam, &portno);
 
