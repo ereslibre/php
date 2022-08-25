@@ -66,6 +66,11 @@ fn main() -> Result<()> {
                 (0 as i32)
             })
         };
+        (sig11, $symbol:ident) => {
+            (|| {
+                println!("Symbol called: {}", stringify!($symbol));
+            })
+        };
         (sig12, $symbol:ident) => {
             (|| {
                 println!("Symbol called: {}", stringify!($symbol));
@@ -180,6 +185,8 @@ fn main() -> Result<()> {
     linker.func_wrap("env", "mmap", dummy_signature!(sig27, mmap))?;
     linker.func_wrap("env", "signal", dummy_signature!(sig4, signal))?;
     linker.func_wrap("env", "__SIG_IGN", dummy_signature!(sig13, __SIG_IGN))?;
+    linker.func_wrap("env", "zend_fiber_init", dummy_signature!(sig11, zend_fiber_init))?;
+    linker.func_wrap("env", "zend_fiber_shutdown", dummy_signature!(sig11, zend_fiber_shutdown))?;
 
     // Create a WASI context and put it in a Store; all instances in the store
     // share this context. `WasiCtxBuilder` provides a number of ways to
@@ -187,8 +194,8 @@ fn main() -> Result<()> {
     let wasi = WasiCtxBuilder::new()
         .preopened_dir(cap_std::fs::Dir::open_ambient_dir(Path::new("/home/ereslibre/projects/php/my-wasmtime/misc"), cap_std::ambient_authority())?, Path::new("."))?
         .inherit_stdio()
-    //        .args(&[String::from("--version")])?
-        .args(&[String::from("hello.php")])?
+        .args(&[String::from("--version")])?
+    // .args(&[String::from("hello.php")])?
         .build();
     let mut store = Store::new(&engine, wasi);
 

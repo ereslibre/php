@@ -1159,7 +1159,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 int main(int argc, char *argv[])
 #endif
 {
-  printf("Hi there!\n");
+  printf("Hi there 1!\n");
 
 #if defined(PHP_WIN32)
 # ifdef PHP_CLI_WIN32_NO_CONSOLE
@@ -1182,6 +1182,8 @@ int main(int argc, char *argv[])
 	int ini_ignore = 0;
 	sapi_module_struct *sapi_module = &cli_sapi_module;
 
+  printf("Hi there 2!\n");
+
 	/*
 	 * Do not move this initialization. It needs to happen before argv is used
 	 * in any way.
@@ -1192,6 +1194,8 @@ int main(int argc, char *argv[])
 	php_win32_console_fileno_set_vt100(STDOUT_FILENO, TRUE);
 	php_win32_console_fileno_set_vt100(STDERR_FILENO, TRUE);
 #endif
+
+  printf("Hi there 3!\n");
 
 	cli_sapi_module.additional_functions = additional_functions;
 
@@ -1215,6 +1219,8 @@ int main(int argc, char *argv[])
 	}
 #endif
 
+  printf("Hi there 4!\n");
+
 #if defined(SIGPIPE) && defined(SIG_IGN)
 	signal(SIGPIPE, SIG_IGN); /* ignore SIGPIPE in standalone mode so
 								that sockets created via fsockopen()
@@ -1224,12 +1230,16 @@ int main(int argc, char *argv[])
 								20000419 */
 #endif
 
+  printf("Hi there 5!\n");
+
 #ifdef ZTS
 	php_tsrm_startup();
 # ifdef PHP_WIN32
 	ZEND_TSRMLS_CACHE_UPDATE();
 # endif
 #endif
+
+  printf("Hi there 6!\n");
 
 	zend_signal_startup();
 
@@ -1241,6 +1251,8 @@ int main(int argc, char *argv[])
 #endif
 
 	php_ini_builder_init(&ini_builder);
+
+  printf("Hi there 7!\n");
 
 	while ((c = php_getopt(argc, argv, OPTIONS, &php_optarg, &php_optind, 1, 2))!=-1) {
 		switch (c) {
@@ -1310,6 +1322,8 @@ exit_loop:
 	}
 	module_started = 1;
 
+  printf("Hi there 8!\n");
+
 #if defined(PHP_WIN32)
 	php_win32_cp_cli_setup();
 	orig_cp = (php_win32_cp_get_orig())->id;
@@ -1322,6 +1336,8 @@ exit_loop:
 
 	SetConsoleCtrlHandler(php_cli_win32_ctrl_handler, TRUE);
 #endif
+
+  do_cli(argc, argv);
 
  out:
 	exit(exit_status);
