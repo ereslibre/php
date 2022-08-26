@@ -925,7 +925,7 @@
 /* #undef HAVE_JIT */
 
 /* whether to enable JavaScript Object Serialization support */
-#define HAVE_JSON 1 
+#define HAVE_JSON 1
 
 /* Define to 1 if you have the `kill' function. */
 #define HAVE_KILL 1
@@ -2210,10 +2210,10 @@
 #define ZEND_DEBUG 0
 
 /* */
-#define ZEND_FIBER_ASM 1
+#undef ZEND_FIBER_ASM
 
 /* */
-/* #undef ZEND_FIBER_UCONTEXT */
+#define ZEND_FIBER_UCONTEXT 1
 
 /* */
 #define ZEND_MM_ALIGNMENT 8
@@ -2268,4 +2268,3 @@
 #include <string.h>
 
 #endif /* PHP_CONFIG_H */
-
