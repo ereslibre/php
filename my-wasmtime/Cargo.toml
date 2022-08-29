@@ -1,0 +1,10 @@
+[package]
+name = "my-wasmtime"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+cap-std = "0.25"
+wasmtime = "0.40"
+wasmtime-wasi = "0.40"

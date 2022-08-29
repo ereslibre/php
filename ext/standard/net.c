@@ -43,8 +43,6 @@
 # include <ws2ipdef.h>
 # include <Ws2tcpip.h>
 # include <iphlpapi.h>
-#else
-# include <netdb.h>
 #endif
 
 PHPAPI zend_string* php_inet_ntop(const struct sockaddr *addr) {

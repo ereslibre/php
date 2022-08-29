@@ -1237,7 +1237,7 @@ elif test "$fiber_os" = 'aix'; then
 elif test "$fiber_asm_file_prefix" != 'unknown'; then
   fiber_asm_file="${fiber_asm_file_prefix}_elf_gas"
 else
-  fiber_asm="no"
+  fiber_asm="yes"
 fi
 
 if test "$fiber_asm" = 'yes'; then
