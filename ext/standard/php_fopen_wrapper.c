@@ -245,14 +245,7 @@ php_stream * php_stream_url_wrap_php(php_stream_wrapper *wrapper, const char *pa
 		if (!strcmp(sapi_module.name, "cli")) {
 			static int cli_in = 0;
 			fd = STDIN_FILENO;
-			if (cli_in) {
-				fd = dup(fd);
-			} else {
-				cli_in = 1;
-				file = stdin;
-			}
 		} else {
-			fd = dup(STDIN_FILENO);
 		}
 #ifdef PHP_WIN32
 		pipe_requested = 1;
@@ -262,13 +255,11 @@ php_stream * php_stream_url_wrap_php(php_stream_wrapper *wrapper, const char *pa
 			static int cli_out = 0;
 			fd = STDOUT_FILENO;
 			if (cli_out++) {
-				fd = dup(fd);
 			} else {
 				cli_out = 1;
 				file = stdout;
 			}
 		} else {
-			fd = dup(STDOUT_FILENO);
 		}
 #ifdef PHP_WIN32
 		pipe_requested = 1;
@@ -278,13 +269,11 @@ php_stream * php_stream_url_wrap_php(php_stream_wrapper *wrapper, const char *pa
 			static int cli_err = 0;
 			fd = STDERR_FILENO;
 			if (cli_err++) {
-				fd = dup(fd);
 			} else {
 				cli_err = 1;
 				file = stderr;
 			}
 		} else {
-			fd = dup(STDERR_FILENO);
 		}
 #ifdef PHP_WIN32
 		pipe_requested = 1;
@@ -317,11 +306,7 @@ php_stream * php_stream_url_wrap_php(php_stream_wrapper *wrapper, const char *pa
 			return NULL;
 		}
 
-#if HAVE_UNISTD_H
-		dtablesize = getdtablesize();
-#else
 		dtablesize = INT_MAX;
-#endif
 
 		if (fildes_ori < 0 || fildes_ori >= dtablesize) {
 			php_stream_wrapper_log_error(wrapper, options,
@@ -329,7 +314,6 @@ php_stream * php_stream_url_wrap_php(php_stream_wrapper *wrapper, const char *pa
 			return NULL;
 		}
 
-		fd = dup((int)fildes_ori);
 		if (fd == -1) {
 			php_stream_wrapper_log_error(wrapper, options,
 				"Error duping file descriptor " ZEND_LONG_FMT "; possibly it doesn't exist: "

@@ -34,7 +34,6 @@
 #if HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
-#include <netdb.h>
 #ifdef _OSD_POSIX
 #undef STATUS
 #undef T_UNSPEC
@@ -172,47 +171,7 @@ PHP_FUNCTION(gethostbyaddr)
 /* {{{ php_gethostbyaddr */
 static zend_string *php_gethostbyaddr(char *ip)
 {
-#if HAVE_IPV6 && HAVE_INET_PTON
-	struct sockaddr_in sa4;
-	struct sockaddr_in6 sa6;
-	char out[NI_MAXHOST];
-	memset(&sa4, 0, sizeof(struct sockaddr_in));
-	memset(&sa6, 0, sizeof(struct sockaddr_in6));
-
-	if (inet_pton(AF_INET6, ip, &sa6.sin6_addr)) {
-		sa6.sin6_family = AF_INET6;
-
-		if (getnameinfo((struct sockaddr *)&sa6, sizeof(sa6), out, sizeof(out), NULL, 0, NI_NAMEREQD) != 0) {
-			return zend_string_init(ip, strlen(ip), 0);
-		}
-		return zend_string_init(out, strlen(out), 0);
-	} else if (inet_pton(AF_INET, ip, &sa4.sin_addr)) {
-		sa4.sin_family = AF_INET;
-
-		if (getnameinfo((struct sockaddr *)&sa4, sizeof(sa4), out, sizeof(out), NULL, 0, NI_NAMEREQD) != 0) {
-			return zend_string_init(ip, strlen(ip), 0);
-		}
-		return zend_string_init(out, strlen(out), 0);
-	}
 	return NULL; /* not a valid IP */
-#else
-	struct in_addr addr;
-	struct hostent *hp;
-
-	addr.s_addr = inet_addr(ip);
-
-	if (addr.s_addr == -1) {
-		return NULL;
-	}
-
-	hp = gethostbyaddr((char *) &addr, sizeof(addr), AF_INET);
-
-	if (!hp || hp->h_name == NULL || hp->h_name[0] == '\0') {
-		return zend_string_init(ip, strlen(ip), 0);
-	}
-
-	return zend_string_init(hp->h_name, strlen(hp->h_name), 0);
-#endif
 }
 /* }}} */
 
@@ -264,55 +223,14 @@ PHP_FUNCTION(gethostbynamel)
 	}
 
 	array_init(return_value);
-
-	for (i = 0;; i++) {
-		/* On macos h_addr_list entries may be misaligned. */
-		struct in_addr *h_addr_entry; /* Don't call this h_addr, it's a macro! */
-		memcpy(&h_addr_entry, &hp->h_addr_list[i], sizeof(struct in_addr *));
-		if (!h_addr_entry) {
-			return;
-		}
-
-		in = *h_addr_entry;
-#ifdef HAVE_INET_NTOP
-		add_next_index_string(return_value, inet_ntop(AF_INET, &in, addr4, INET_ADDRSTRLEN));
-#else
-		add_next_index_string(return_value, inet_ntoa(in));
-#endif
-	}
+	RETURN_FALSE;
 }
 /* }}} */
 
 /* {{{ php_gethostbyname */
 static zend_string *php_gethostbyname(char *name)
 {
-	struct hostent *hp;
-	struct in_addr *h_addr_0; /* Don't call this h_addr, it's a macro! */
-	struct in_addr in;
-#ifdef HAVE_INET_NTOP
-	char addr4[INET_ADDRSTRLEN];
-#endif
-	const char *address;
-
-	hp = php_network_gethostbyname(name);
-	if (!hp) {
-		return zend_string_init(name, strlen(name), 0);
-	}
-
-	/* On macos h_addr_list entries may be misaligned. */
-	memcpy(&h_addr_0, &hp->h_addr_list[0], sizeof(struct in_addr *));
-	if (!h_addr_0) {
-		return zend_string_init(name, strlen(name), 0);
-	}
-
-	memcpy(&in.s_addr, h_addr_0, sizeof(in.s_addr));
-
-#ifdef HAVE_INET_NTOP
-	address = inet_ntop(AF_INET, &in, addr4, INET_ADDRSTRLEN);
-#else
-	address = inet_ntoa(in);
-#endif
-	return zend_string_init(address, strlen(address), 0);
+  return NULL;
 }
 /* }}} */
 

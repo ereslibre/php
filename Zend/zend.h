@@ -268,15 +268,12 @@ typedef size_t (*zend_write_func_t)(const char *str, size_t str_length);
 /* #define zend_first_try		EG(bailout)=NULL;	zend_try */
 
 #define zend_try												\
-	if (true) { \
-    printf("this is a try\n");
+	if (true) {
 #define zend_catch												\
-		} else { \
-      printf("this is a catch\n");
+		} else {
 #define zend_end_try() \
-    printf("this is an end try\n");\
 		}
-#define zend_first_try		EG(bailout)=NULL;	zend_try
+#define zend_first_try		zend_try
 
 BEGIN_EXTERN_C()
 void zend_startup(zend_utility_functions *utility_functions);

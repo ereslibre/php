@@ -19,6 +19,8 @@
 /* {{{ includes */
 
 #define ZEND_INCLUDE_FULL_WINDOWS_HEADERS
+#define LOG_WARNING 4
+#define LOG_ERR 5
 
 #include "php.h"
 #include <stdio.h>
@@ -1267,7 +1269,7 @@ static ZEND_COLD void php_error_cb(int orig_type, zend_string *error_filename, c
 	if (display && ((EG(error_reporting) & type) || (type & E_CORE))
 		&& (PG(log_errors) || PG(display_errors) || (!module_initialized))) {
 		char *error_type_str;
-		int syslog_type_int = LOG_NOTICE;
+		int syslog_type_int = 0;
 
 		switch (type) {
 			case E_ERROR:
@@ -1295,16 +1297,16 @@ static ZEND_COLD void php_error_cb(int orig_type, zend_string *error_filename, c
 			case E_NOTICE:
 			case E_USER_NOTICE:
 				error_type_str = "Notice";
-				syslog_type_int = LOG_NOTICE;
+				syslog_type_int = 0;
 				break;
 			case E_STRICT:
 				error_type_str = "Strict Standards";
-				syslog_type_int = LOG_INFO;
+				syslog_type_int = 1;
 				break;
 			case E_DEPRECATED:
 			case E_USER_DEPRECATED:
 				error_type_str = "Deprecated";
-				syslog_type_int = LOG_INFO;
+				syslog_type_int = 2;
 				break;
 			default:
 				error_type_str = "Unknown error";
@@ -1428,32 +1430,6 @@ PHPAPI char *php_get_current_user(void)
 		return SG(request_info).current_user;
 #else
 		struct passwd *pwd;
-#if defined(ZTS) && defined(HAVE_GETPWUID_R) && defined(_SC_GETPW_R_SIZE_MAX)
-		struct passwd _pw;
-		struct passwd *retpwptr = NULL;
-		int pwbuflen = sysconf(_SC_GETPW_R_SIZE_MAX);
-		char *pwbuf;
-
-		if (pwbuflen < 1) {
-			return "";
-		}
-		pwbuf = emalloc(pwbuflen);
-		if (getpwuid_r(pstat->st_uid, &_pw, pwbuf, pwbuflen, &retpwptr) != 0) {
-			efree(pwbuf);
-			return "";
-		}
-		if (retpwptr == NULL) {
-			efree(pwbuf);
-			return "";
-		}
-		pwd = &_pw;
-#else
-		if ((pwd=getpwuid(pstat->st_uid))==NULL) {
-			return "";
-		}
-#endif
-		SG(request_info).current_user_length = strlen(pwd->pw_name);
-		SG(request_info).current_user = estrndup(pwd->pw_name, SG(request_info).current_user_length);
 #if defined(ZTS) && defined(HAVE_GETPWUID_R) && defined(_SC_GETPW_R_SIZE_MAX)
 		efree(pwbuf);
 #endif

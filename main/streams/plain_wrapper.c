@@ -490,7 +490,7 @@ static int php_stdiop_close(php_stream *stream, int close_handle)
 		if (data->file) {
 			if (data->is_process_pipe) {
 				errno = 0;
-				ret = pclose(data->file);
+				ret = 0;
 
 #ifdef HAVE_SYS_WAIT_H
 				if (WIFEXITED(ret)) {
@@ -1292,7 +1292,7 @@ static int php_plain_files_rename(php_stream_wrapper *wrapper, const char *url_f
 			zend_stat_t sb;
 # if !defined(ZTS) && !defined(TSRM_WIN32)
 			/* not sure what to do in ZTS case, umask is not thread-safe */
-			int oldmask = umask(077);
+			int oldmask = 077;
 # endif
 			int success = 0;
 			if (php_copy_file(url_from, url_to) == SUCCESS) {
@@ -1306,20 +1306,8 @@ static int php_plain_files_rename(php_stream_wrapper *wrapper, const char *url_f
 					 * on the system environment to have proper umask to not allow
 					 * access to the file in the meantime.
 					 */
-					if (VCWD_CHOWN(url_to, sb.st_uid, sb.st_gid)) {
-						php_error_docref2(NULL, url_from, url_to, E_WARNING, "%s", strerror(errno));
-						if (errno != EPERM) {
-							success = 0;
-						}
-					}
 
 					if (success) {
-						if (VCWD_CHMOD(url_to, sb.st_mode)) {
-							php_error_docref2(NULL, url_from, url_to, E_WARNING, "%s", strerror(errno));
-							if (errno != EPERM) {
-								success = 0;
-							}
-						}
 					}
 #  endif
 					if (success) {
@@ -1332,7 +1320,6 @@ static int php_plain_files_rename(php_stream_wrapper *wrapper, const char *url_f
 				php_error_docref2(NULL, url_from, url_to, E_WARNING, "%s", strerror(errno));
 			}
 #  if !defined(ZTS) && !defined(TSRM_WIN32)
-			umask(oldmask);
 #  endif
 			return success;
 		}
@@ -1523,7 +1510,6 @@ static int php_plain_files_metadata(php_stream_wrapper *wrapper, const char *url
 			} else {
 				uid = (uid_t)*(long *)value;
 			}
-			ret = VCWD_CHOWN(url, uid, -1);
 			break;
 		case PHP_STREAM_META_GROUP:
 		case PHP_STREAM_META_GROUP_NAME:
@@ -1535,12 +1521,10 @@ static int php_plain_files_metadata(php_stream_wrapper *wrapper, const char *url
 			} else {
 				gid = (gid_t)*(long *)value;
 			}
-			ret = VCWD_CHOWN(url, -1, gid);
 			break;
 #endif
 		case PHP_STREAM_META_ACCESS:
 			mode = (mode_t)*(zend_long *)value;
-			ret = VCWD_CHMOD(url, mode);
 			break;
 		default:
 			zend_value_error("Unknown option %d for stream_metadata", option);

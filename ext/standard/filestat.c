@@ -325,13 +325,6 @@ PHPAPI int php_get_gid_by_name(const char *name, gid_t *gid)
 		}
 		efree(grbuf);
 		*gid = gr.gr_gid;
-#else
-		struct group *gr = getgrnam(name);
-
-		if (!gr) {
-			return FAILURE;
-		}
-		*gid = gr->gr_gid;
 #endif
 		return SUCCESS;
 }
@@ -380,38 +373,6 @@ static void php_do_chgrp(INTERNAL_FUNCTION_PARAMETERS, int do_lchgrp) /* {{{ */
 			RETURN_FALSE;
 		}
 	}
-
-#if defined(WINDOWS)
-	/* We have no native chgrp on Windows, nothing left to do if stream doesn't have own implementation */
-	RETURN_FALSE;
-#else
-	if (group_str) {
-		if (php_get_gid_by_name(ZSTR_VAL(group_str), &gid) != SUCCESS) {
-			php_error_docref(NULL, E_WARNING, "Unable to find gid for %s", ZSTR_VAL(group_str));
-			RETURN_FALSE;
-		}
-	} else {
-		gid = (gid_t) group_long;
-	}
-
-	/* Check the basedir */
-	if (php_check_open_basedir(filename)) {
-		RETURN_FALSE;
-	}
-
-	if (do_lchgrp) {
-#if HAVE_LCHOWN
-		ret = VCWD_LCHOWN(filename, -1, gid);
-#endif
-	} else {
-		ret = VCWD_CHOWN(filename, -1, gid);
-	}
-	if (ret == -1) {
-		php_error_docref(NULL, E_WARNING, "%s", strerror(errno));
-		RETURN_FALSE;
-	}
-	RETURN_TRUE;
-#endif
 }
 /* }}} */
 
@@ -451,13 +412,6 @@ PHPAPI uid_t php_get_uid_by_name(const char *name, uid_t *uid)
 		}
 		efree(pwbuf);
 		*uid = pw.pw_uid;
-#else
-		struct passwd *pw = getpwnam(name);
-
-		if (!pw) {
-			return FAILURE;
-		}
-		*uid = pw->pw_uid;
 #endif
 		return SUCCESS;
 }
@@ -465,80 +419,6 @@ PHPAPI uid_t php_get_uid_by_name(const char *name, uid_t *uid)
 
 static void php_do_chown(INTERNAL_FUNCTION_PARAMETERS, int do_lchown) /* {{{ */
 {
-	char *filename;
-	size_t filename_len;
-	zend_string *user_str;
-	zend_long user_long;
-#if !defined(WINDOWS)
-	uid_t uid;
-	int ret;
-#endif
-	php_stream_wrapper *wrapper;
-
-	ZEND_PARSE_PARAMETERS_START(2, 2)
-		Z_PARAM_PATH(filename, filename_len)
-		Z_PARAM_STR_OR_LONG(user_str, user_long)
-	ZEND_PARSE_PARAMETERS_END();
-
-	wrapper = php_stream_locate_url_wrapper(filename, NULL, 0);
-	if(wrapper != &php_plain_files_wrapper || strncasecmp("file://", filename, 7) == 0) {
-		if(wrapper && wrapper->wops->stream_metadata) {
-			int option;
-			void *value;
-			if (user_str) {
-				option = PHP_STREAM_META_OWNER_NAME;
-				value = ZSTR_VAL(user_str);
-			} else {
-				option = PHP_STREAM_META_OWNER;
-				value = &user_long;
-			}
-
-			if(wrapper->wops->stream_metadata(wrapper, filename, option, value, NULL)) {
-				RETURN_TRUE;
-			} else {
-				RETURN_FALSE;
-			}
-		} else {
-#if !defined(WINDOWS)
-/* On Windows, we expect regular chown to fail silently by default */
-			php_error_docref(NULL, E_WARNING, "Can not call chown() for a non-standard stream");
-#endif
-			RETURN_FALSE;
-		}
-	}
-
-#if defined(WINDOWS)
-	/* We have no native chown on Windows, nothing left to do if stream doesn't have own implementation */
-	RETURN_FALSE;
-#else
-
-	if (user_str) {
-		if (php_get_uid_by_name(ZSTR_VAL(user_str), &uid) != SUCCESS) {
-			php_error_docref(NULL, E_WARNING, "Unable to find uid for %s", ZSTR_VAL(user_str));
-			RETURN_FALSE;
-		}
-	} else {
-		uid = (uid_t) user_long;
-	}
-
-	/* Check the basedir */
-	if (php_check_open_basedir(filename)) {
-		RETURN_FALSE;
-	}
-
-	if (do_lchown) {
-#if HAVE_LCHOWN
-		ret = VCWD_LCHOWN(filename, uid, -1);
-#endif
-	} else {
-		ret = VCWD_CHOWN(filename, uid, -1);
-	}
-	if (ret == -1) {
-		php_error_docref(NULL, E_WARNING, "%s", strerror(errno));
-		RETURN_FALSE;
-	}
-	RETURN_TRUE;
-#endif
 }
 /* }}} */
 
@@ -563,45 +443,6 @@ PHP_FUNCTION(lchown)
 /* {{{ Change file mode */
 PHP_FUNCTION(chmod)
 {
-	char *filename;
-	size_t filename_len;
-	zend_long mode;
-	int ret;
-	mode_t imode;
-	php_stream_wrapper *wrapper;
-
-	ZEND_PARSE_PARAMETERS_START(2, 2)
-		Z_PARAM_PATH(filename, filename_len)
-		Z_PARAM_LONG(mode)
-	ZEND_PARSE_PARAMETERS_END();
-
-	wrapper = php_stream_locate_url_wrapper(filename, NULL, 0);
-	if(wrapper != &php_plain_files_wrapper || strncasecmp("file://", filename, 7) == 0) {
-		if(wrapper && wrapper->wops->stream_metadata) {
-			if(wrapper->wops->stream_metadata(wrapper, filename, PHP_STREAM_META_ACCESS, &mode, NULL)) {
-				RETURN_TRUE;
-			} else {
-				RETURN_FALSE;
-			}
-		} else {
-			php_error_docref(NULL, E_WARNING, "Can not call chmod() for a non-standard stream");
-			RETURN_FALSE;
-		}
-	}
-
-	/* Check the basedir */
-	if (php_check_open_basedir(filename)) {
-		RETURN_FALSE;
-	}
-
-	imode = (mode_t) mode;
-
-	ret = VCWD_CHMOD(filename, imode);
-	if (ret == -1) {
-		php_error_docref(NULL, E_WARNING, "%s", strerror(errno));
-		RETURN_FALSE;
-	}
-	RETURN_TRUE;
 }
 /* }}} */
 
@@ -853,49 +694,6 @@ PHPAPI void php_stat(zend_string *filename, int type, zval *return_value)
 		}
 	} while (0);
 
-	stat_sb = &ssb.sb;
-
-	if (type >= FS_IS_W && type <= FS_IS_X) {
-		if(ssb.sb.st_uid==getuid()) {
-			rmask=S_IRUSR;
-			wmask=S_IWUSR;
-			xmask=S_IXUSR;
-		} else if(ssb.sb.st_gid==getgid()) {
-			rmask=S_IRGRP;
-			wmask=S_IWGRP;
-			xmask=S_IXGRP;
-		} else {
-			int   groups, n, i;
-			gid_t *gids;
-
-			groups = getgroups(0, NULL);
-			if(groups > 0) {
-				gids=(gid_t *)safe_emalloc(groups, sizeof(gid_t), 0);
-				n=getgroups(groups, gids);
-				for(i=0;i<n;i++){
-					if(ssb.sb.st_gid==gids[i]) {
-						rmask=S_IRGRP;
-						wmask=S_IWGRP;
-						xmask=S_IXGRP;
-						break;
-					}
-				}
-				efree(gids);
-			}
-		}
-	}
-
-	if (IS_ABLE_CHECK(type) && getuid() == 0) {
-		/* root has special perms on plain_wrapper */
-		if (wrapper == &php_plain_files_wrapper) {
-			if (type == FS_IS_X) {
-				xmask = S_IXROOT;
-			} else {
-				RETURN_TRUE;
-			}
-		}
-	}
-
 	switch (type) {
 	case FS_PERMS:
 	case FS_LPERMS:
@@ -924,9 +722,6 @@ PHPAPI void php_stat(zend_string *filename, int type, zval *return_value)
 		case S_IFDIR: RETURN_STRING("dir");
 		case S_IFBLK: RETURN_STRING("block");
 		case S_IFREG: RETURN_STRING("file");
-#if defined(S_IFSOCK) && !defined(PHP_WIN32)
-		case S_IFSOCK: RETURN_STRING("socket");
-#endif
 		}
 		php_error_docref(NULL, E_NOTICE, "Unknown file type (%d)", ssb.sb.st_mode&S_IFMT);
 		RETURN_STRING("unknown");

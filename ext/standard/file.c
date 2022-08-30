@@ -55,7 +55,6 @@
 # endif
 # include <sys/socket.h>
 # include <netinet/in.h>
-# include <netdb.h>
 # if HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
 # endif
@@ -923,55 +922,7 @@ PHPAPI PHP_FUNCTION(fclose)
 /* {{{ Execute a command and open either a read or a write pipe to it */
 PHP_FUNCTION(popen)
 {
-	char *command, *mode;
-	size_t command_len, mode_len;
-	FILE *fp;
-	php_stream *stream;
-	char *posix_mode;
 
-	ZEND_PARSE_PARAMETERS_START(2, 2)
-		Z_PARAM_PATH(command, command_len)
-		Z_PARAM_STRING(mode, mode_len)
-	ZEND_PARSE_PARAMETERS_END();
-
-	posix_mode = estrndup(mode, mode_len);
-#ifndef PHP_WIN32
-	{
-		char *z = memchr(posix_mode, 'b', mode_len);
-		if (z) {
-			memmove(z, z + 1, mode_len - (z - posix_mode));
-			mode_len--;
-		}
-	}
-#endif
-
-	/* Musl only partially validates the mode. Manually check it to ensure consistent behavior. */
-	if (mode_len > 2 ||
-		(mode_len == 1 && (*posix_mode != 'r' && *posix_mode != 'w')) ||
-		(mode_len == 2 && (memcmp(posix_mode, "rb", 2) && memcmp(posix_mode, "wb", 2)))
-	) {
-		zend_argument_value_error(2, "must be one of \"r\", \"rb\", \"w\", or \"wb\"");
-		efree(posix_mode);
-		RETURN_THROWS();
-	}
-
-	fp = VCWD_POPEN(command, posix_mode);
-	if (!fp) {
-		php_error_docref2(NULL, command, posix_mode, E_WARNING, "%s", strerror(errno));
-		efree(posix_mode);
-		RETURN_FALSE;
-	}
-
-	stream = php_stream_fopen_from_pipe(fp, mode);
-
-	if (stream == NULL)	{
-		php_error_docref2(NULL, command, mode, E_WARNING, "%s", strerror(errno));
-		RETVAL_FALSE;
-	} else {
-		php_stream_to_zval(stream, return_value);
-	}
-
-	efree(posix_mode);
 }
 /* }}} */
 
@@ -1353,28 +1304,6 @@ PHP_FUNCTION(readfile)
 /* {{{ Return or change the umask */
 PHP_FUNCTION(umask)
 {
-	zend_long mask = 0;
-	bool mask_is_null = 1;
-	int oldumask;
-
-	ZEND_PARSE_PARAMETERS_START(0, 1)
-		Z_PARAM_OPTIONAL
-		Z_PARAM_LONG_OR_NULL(mask, mask_is_null)
-	ZEND_PARSE_PARAMETERS_END();
-
-	oldumask = umask(077);
-
-	if (BG(umask) == -1) {
-		BG(umask) = oldumask;
-	}
-
-	if (mask_is_null) {
-		umask(oldumask);
-	} else {
-		umask((int) mask);
-	}
-
-	RETURN_LONG(oldumask);
 }
 /* }}} */
 

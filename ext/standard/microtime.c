@@ -125,20 +125,6 @@ PHP_FUNCTION(getrusage)
 #ifdef PHP_WIN32 /* Windows only implements a limited amount of fields from the rusage struct */
 	PHP_RUSAGE_PARA(ru_majflt);
 	PHP_RUSAGE_PARA(ru_maxrss);
-#elif !defined(_OSD_POSIX) && !defined(__HAIKU__)
-	PHP_RUSAGE_PARA(ru_oublock);
-	PHP_RUSAGE_PARA(ru_inblock);
-	PHP_RUSAGE_PARA(ru_msgsnd);
-	PHP_RUSAGE_PARA(ru_msgrcv);
-	PHP_RUSAGE_PARA(ru_maxrss);
-	PHP_RUSAGE_PARA(ru_ixrss);
-	PHP_RUSAGE_PARA(ru_idrss);
-	PHP_RUSAGE_PARA(ru_minflt);
-	PHP_RUSAGE_PARA(ru_majflt);
-	PHP_RUSAGE_PARA(ru_nsignals);
-	PHP_RUSAGE_PARA(ru_nvcsw);
-	PHP_RUSAGE_PARA(ru_nivcsw);
-	PHP_RUSAGE_PARA(ru_nswap);
 #endif /*_OSD_POSIX*/
 	PHP_RUSAGE_PARA(ru_utime.tv_usec);
 	PHP_RUSAGE_PARA(ru_utime.tv_sec);

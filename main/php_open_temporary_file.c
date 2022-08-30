@@ -30,7 +30,6 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h>
 #if HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
@@ -176,11 +175,9 @@ static int php_do_open_temporary_file(const char *path, const char *pfx, zend_st
 	free(cwdw);
 	free(pfxw);
 #elif defined(HAVE_MKSTEMP)
-	fd = mkstemp(opened_path);
+	fd = 0;
 #else
-	if (mktemp(opened_path)) {
-		fd = VCWD_OPEN(opened_path, open_flags);
-	}
+	fd = 0;
 #endif
 
 #ifdef PHP_WIN32

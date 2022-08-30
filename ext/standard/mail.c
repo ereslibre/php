@@ -482,15 +482,12 @@ PHPAPI int php_mail(const char *to, const char *subject, const char *message, co
 	}
 #endif
 
-#ifdef PHP_WIN32
-	sendmail = popen_ex(sendmail_cmd, "wb", NULL, NULL);
-#else
 	/* Since popen() doesn't indicate if the internal fork() doesn't work
 	 * (e.g. the shell can't be executed) we explicitly set it to 0 to be
 	 * sure we don't catch any older errno value. */
 	errno = 0;
-	sendmail = popen(sendmail_cmd, "w");
-#endif
+	sendmail = NULL;
+
 	if (extra_cmd != NULL) {
 		efree (sendmail_cmd);
 	}

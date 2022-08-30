@@ -518,11 +518,6 @@ static void sapi_cli_server_flush(void *server_context) /* {{{ */
 		return;
 	}
 
-	if (!ZEND_VALID_SOCKET(client->sock)) {
-		php_handle_aborted_connection();
-		return;
-	}
-
 	if (!SG(headers_sent)) {
 		sapi_send_headers();
 		SG(headers_sent) = 1;
@@ -719,15 +714,7 @@ static void sapi_cli_server_log_write(int type, const char *msg) /* {{{ */
 			memmove(buf, "unknown", sizeof("unknown"));
 		}
 	}
-#ifdef HAVE_FORK
-	if (php_cli_server_workers_max > 1) {
-		fprintf(stderr, "[%ld] [%s] %s\n", (long) getpid(), buf, msg);
-	} else {
-		fprintf(stderr, "[%s] %s\n", buf, msg);
-	}
-#else
 	fprintf(stderr, "[%s] %s\n", buf, msg);
-#endif
 } /* }}} */
 
 static void sapi_cli_server_log_message(const char *msg, int syslog_type_int) /* {{{ */
@@ -1218,112 +1205,7 @@ static void php_cli_server_logf(int type, const char *format, ...) /* {{{ */
 
 static php_socket_t php_network_listen_socket(const char *host, int *port, int socktype, int *af, socklen_t *socklen, zend_string **errstr) /* {{{ */
 {
-	php_socket_t retval = SOCK_ERR;
-	int err = 0;
-	struct sockaddr *sa = NULL, **p, **sal;
 
-	int num_addrs = php_network_getaddresses(host, socktype, &sal, errstr);
-	if (num_addrs == 0) {
-		return -1;
-	}
-	for (p = sal; *p; p++) {
-		if (sa) {
-			pefree(sa, 1);
-			sa = NULL;
-		}
-
-		retval = socket((*p)->sa_family, socktype, 0);
-		if (retval == SOCK_ERR) {
-			continue;
-		}
-
-		switch ((*p)->sa_family) {
-#if HAVE_GETADDRINFO && HAVE_IPV6
-		case AF_INET6:
-			sa = pemalloc(sizeof(struct sockaddr_in6), 1);
-			*(struct sockaddr_in6 *)sa = *(struct sockaddr_in6 *)*p;
-			((struct sockaddr_in6 *)sa)->sin6_port = htons(*port);
-			*socklen = sizeof(struct sockaddr_in6);
-			break;
-#endif
-		case AF_INET:
-			sa = pemalloc(sizeof(struct sockaddr_in), 1);
-			*(struct sockaddr_in *)sa = *(struct sockaddr_in *)*p;
-			((struct sockaddr_in *)sa)->sin_port = htons(*port);
-			*socklen = sizeof(struct sockaddr_in);
-			break;
-		default:
-			/* Unknown family */
-			*socklen = 0;
-			closesocket(retval);
-			continue;
-		}
-
-#ifdef SO_REUSEADDR
-		{
-			int val = 1;
-			setsockopt(retval, SOL_SOCKET, SO_REUSEADDR, (char*)&val, sizeof(val));
-		}
-#endif
-
-		if (bind(retval, sa, *socklen) == SOCK_CONN_ERR) {
-			err = php_socket_errno();
-			if (err == SOCK_EINVAL || err == SOCK_EADDRINUSE) {
-				goto out;
-			}
-			closesocket(retval);
-			retval = SOCK_ERR;
-			continue;
-		}
-		err = 0;
-
-		*af = sa->sa_family;
-		if (*port == 0) {
-			if (getsockname(retval, sa, socklen)) {
-				err = php_socket_errno();
-				goto out;
-			}
-			switch (sa->sa_family) {
-#if HAVE_GETADDRINFO && HAVE_IPV6
-			case AF_INET6:
-				*port = ntohs(((struct sockaddr_in6 *)sa)->sin6_port);
-				break;
-#endif
-			case AF_INET:
-				*port = ntohs(((struct sockaddr_in *)sa)->sin_port);
-				break;
-			}
-		}
-
-		break;
-	}
-
-	if (retval == SOCK_ERR) {
-		goto out;
-	}
-
-	if (listen(retval, SOMAXCONN)) {
-		err = php_socket_errno();
-		goto out;
-	}
-
-out:
-	if (sa) {
-		pefree(sa, 1);
-	}
-	if (sal) {
-		php_network_freeaddresses(sal);
-	}
-	if (err) {
-		if (ZEND_VALID_SOCKET(retval)) {
-			closesocket(retval);
-		}
-		if (errstr) {
-			*errstr = php_socket_error_str(err);
-		}
-		return SOCK_ERR;
-	}
-	return retval;
 } /* }}} */
 
 static int php_cli_server_request_ctor(php_cli_server_request *req) /* {{{ */

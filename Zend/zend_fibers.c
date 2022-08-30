@@ -91,7 +91,7 @@ typedef struct _zend_fiber_vm_state {
 	zend_execute_data *current_execute_data;
 	int error_reporting;
 	uint32_t jit_trace_num;
-	JMP_BUF *bailout;
+  //JMP_BUF *bailout;
 	zend_fiber *active_fiber;
 } zend_fiber_vm_state;
 
@@ -104,7 +104,7 @@ static zend_always_inline void zend_fiber_capture_vm_state(zend_fiber_vm_state *
 	state->current_execute_data = EG(current_execute_data);
 	state->error_reporting = EG(error_reporting);
 	state->jit_trace_num = EG(jit_trace_num);
-	state->bailout = EG(bailout);
+	//state->bailout = EG(bailout);
 	state->active_fiber = EG(active_fiber);
 }
 
@@ -117,7 +117,7 @@ static zend_always_inline void zend_fiber_restore_vm_state(zend_fiber_vm_state *
 	EG(current_execute_data) = state->current_execute_data;
 	EG(error_reporting) = state->error_reporting;
 	EG(jit_trace_num) = state->jit_trace_num;
-	EG(bailout) = state->bailout;
+	//EG(bailout) = state->bailout;
 	EG(active_fiber) = state->active_fiber;
 }
 
@@ -212,11 +212,6 @@ static zend_fiber_stack *zend_fiber_stack_allocate(size_t size)
 	}
 
 # if ZEND_FIBER_GUARD_PAGES
-	if (mprotect(pointer, ZEND_FIBER_GUARD_PAGES * page_size, PROT_NONE) < 0) {
-		zend_throw_exception_ex(NULL, 0, "Fiber stack protect failed: mprotect failed: %s (%d)", strerror(errno), errno);
-		munmap(pointer, alloc_size);
-		return NULL;
-	}
 # endif
 #endif
 
@@ -337,9 +332,6 @@ ZEND_API bool zend_fiber_init_context(zend_fiber_context *context, void *kind, z
 #else
 	// Stack grows down, calculate the top of the stack. make_fcontext then shifts pointer to lower 16-byte boundary.
 	void *stack = (void *) ((uintptr_t) context->stack->pointer + context->stack->size);
-
-	context->handle = make_fcontext(stack, context->stack->size, zend_fiber_trampoline);
-	ZEND_ASSERT(context->handle != NULL && "make_fcontext() never returns NULL");
 #endif
 
 	context->kind = kind;
@@ -411,17 +403,14 @@ ZEND_API void zend_fiber_switch_context(zend_fiber_transfer *transfer)
 	/* Copy transfer struct because it might live on the other fiber's stack that will eventually be destroyed. */
 	*transfer = *transfer_data;
 #else
-	boost_context_data data = jump_fcontext(to->handle, transfer);
 
 	/* Copy transfer struct because it might live on the other fiber's stack that will eventually be destroyed. */
-	*transfer = *data.transfer;
 #endif
 
 	to = transfer->context;
 
 #ifndef ZEND_FIBER_UCONTEXT
 	/* Get the context that resumed us and update its handle to allow for symmetric coroutines. */
-	to->handle = data.handle;
 #endif
 
 #ifdef __SANITIZE_ADDRESS__
@@ -494,8 +483,8 @@ static ZEND_STACK_ALIGNED void zend_fiber_execute(zend_fiber_transfer *transfer)
 			zend_clear_exception();
 		}
 	} zend_catch {
-		fiber->flags |= ZEND_FIBER_FLAG_BAILOUT;
-		transfer->flags = ZEND_FIBER_TRANSFER_FLAG_BAILOUT;
+	  // fiber->flags |= ZEND_FIBER_FLAG_BAILOUT;
+	  // transfer->flags = ZEND_FIBER_TRANSFER_FLAG_BAILOUT;
 	} zend_end_try();
 
 	transfer->context = fiber->caller;
@@ -536,9 +525,9 @@ static zend_always_inline zend_fiber_transfer zend_fiber_switch_to(
 	zend_fiber_switch_context(&transfer);
 
 	/* Forward bailout into current fiber. */
-	if (UNEXPECTED(transfer.flags & ZEND_FIBER_TRANSFER_FLAG_BAILOUT)) {
-		zend_bailout();
-	}
+	//if (UNEXPECTED(transfer.flags & ZEND_FIBER_TRANSFER_FLAG_BAILOUT)) {
+	//	zend_bailout();
+	//}
 
 	return transfer;
 }
@@ -832,8 +821,8 @@ ZEND_METHOD(Fiber, getReturn)
 	if (fiber->context.status == ZEND_FIBER_STATUS_DEAD) {
 		if (fiber->flags & ZEND_FIBER_FLAG_THREW) {
 			message = "The fiber threw an exception";
-		} else if (fiber->flags & ZEND_FIBER_FLAG_BAILOUT) {
-			message = "The fiber exited with a fatal error";
+			//		} else if (fiber->flags & ZEND_FIBER_FLAG_BAILOUT) {
+			//			message = "The fiber exited with a fatal error";
 		} else {
 			RETURN_COPY_DEREF(&fiber->result);
 		}

@@ -113,93 +113,6 @@ static size_t handle_line(int type, zval *array, char *buf, size_t bufl) {
  */
 PHPAPI int php_exec(int type, const char *cmd, zval *array, zval *return_value)
 {
-	FILE *fp;
-	char *buf;
-	int pclose_return;
-	char *b, *d=NULL;
-	php_stream *stream;
-	size_t buflen, bufl = 0;
-#if PHP_SIGCHILD
-	void (*sig_handler)() = NULL;
-#endif
-
-#if PHP_SIGCHILD
-	sig_handler = signal (SIGCHLD, SIG_DFL);
-#endif
-
-#ifdef PHP_WIN32
-	fp = VCWD_POPEN(cmd, "rb");
-#else
-	fp = VCWD_POPEN(cmd, "r");
-#endif
-	if (!fp) {
-		php_error_docref(NULL, E_WARNING, "Unable to fork [%s]", cmd);
-		goto err;
-	}
-
-	stream = php_stream_fopen_from_pipe(fp, "rb");
-
-	buf = (char *) emalloc(EXEC_INPUT_BUF);
-	buflen = EXEC_INPUT_BUF;
-
-	if (type != 3) {
-		b = buf;
-
-		while (php_stream_get_line(stream, b, EXEC_INPUT_BUF, &bufl)) {
-			/* no new line found, let's read some more */
-			if (b[bufl - 1] != '\n' && !php_stream_eof(stream)) {
-				if (buflen < (bufl + (b - buf) + EXEC_INPUT_BUF)) {
-					bufl += b - buf;
-					buflen = bufl + EXEC_INPUT_BUF;
-					buf = erealloc(buf, buflen);
-					b = buf + bufl;
-				} else {
-					b += bufl;
-				}
-				continue;
-			} else if (b != buf) {
-				bufl += b - buf;
-			}
-
-			bufl = handle_line(type, array, buf, bufl);
-			b = buf;
-		}
-		if (bufl) {
-			if (buf != b) {
-				/* Process remaining output */
-				bufl = handle_line(type, array, buf, bufl);
-			}
-
-			/* Return last line from the shell command */
-			bufl = strip_trailing_whitespace(buf, bufl);
-			RETVAL_STRINGL(buf, bufl);
-		} else { /* should return NULL, but for BC we return "" */
-			RETVAL_EMPTY_STRING();
-		}
-	} else {
-		ssize_t read;
-		while ((read = php_stream_read(stream, buf, EXEC_INPUT_BUF)) > 0) {
-			PHPWRITE(buf, read);
-		}
-	}
-
-	pclose_return = php_stream_close(stream);
-	efree(buf);
-
-done:
-#if PHP_SIGCHILD
-	if (sig_handler) {
-		signal(SIGCHLD, sig_handler);
-	}
-#endif
-	if (d) {
-		efree(d);
-	}
-	return pclose_return;
-err:
-	pclose_return = -1;
-	RETVAL_FALSE;
-	goto done;
 }
 /* }}} */
 
@@ -512,41 +425,7 @@ PHP_FUNCTION(escapeshellarg)
 /* {{{ Execute command via shell and return complete output as string */
 PHP_FUNCTION(shell_exec)
 {
-	FILE *in;
-	char *command;
-	size_t command_len;
-	zend_string *ret;
-	php_stream *stream;
 
-	ZEND_PARSE_PARAMETERS_START(1, 1)
-		Z_PARAM_STRING(command, command_len)
-	ZEND_PARSE_PARAMETERS_END();
-
-	if (!command_len) {
-		zend_argument_value_error(1, "cannot be empty");
-		RETURN_THROWS();
-	}
-	if (strlen(command) != command_len) {
-		zend_argument_value_error(1, "must not contain any null bytes");
-		RETURN_THROWS();
-	}
-
-#ifdef PHP_WIN32
-	if ((in=VCWD_POPEN(command, "rt"))==NULL) {
-#else
-	if ((in=VCWD_POPEN(command, "r"))==NULL) {
-#endif
-		php_error_docref(NULL, E_WARNING, "Unable to execute '%s'", command);
-		RETURN_FALSE;
-	}
-
-	stream = php_stream_fopen_from_pipe(in, "rb");
-	ret = php_stream_copy_to_mem(stream, PHP_STREAM_COPY_ALL, 0);
-	php_stream_close(stream);
-
-	if (ret && ZSTR_LEN(ret) > 0) {
-		RETVAL_STR(ret);
-	}
 }
 /* }}} */
 
