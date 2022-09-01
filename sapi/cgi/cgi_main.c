@@ -96,7 +96,7 @@ int __riscosify_control = __RISCOSIFY_STRICT_UNIX_SPECS;
 
 #ifndef PHP_WIN32
 /* XXX this will need to change later when threaded fastcgi is implemented.  shane */
-struct sigaction act, old_term, old_quit, old_int;
+//struct sigaction act, old_term, old_quit, old_int;
 #endif
 
 static void (*php_php_import_environment_variables)(zval *array_ptr);
@@ -1458,20 +1458,6 @@ static void init_request_info(fcgi_request *request)
  */
 void fastcgi_cleanup(int signal)
 {
-#ifdef DEBUG_FASTCGI
-	fprintf(stderr, "FastCGI shutdown, pid %d\n", getpid());
-#endif
-
-	sigaction(SIGTERM, &old_term, 0);
-
-	/* Kill all the processes in our process group */
-	kill(-pgroup, SIGTERM);
-
-	if (parent && parent_waiting) {
-		exit_signal = 1;
-	} else {
-		exit(0);
-	}
 }
 #else
 BOOL WINAPI fastcgi_cleanup(DWORD sig)
@@ -2013,82 +1999,14 @@ consult the installation file that came with this distribution, or visit \n\
 			pid_t pid;
 
 			/* Create a process group for us & children */
-			setsid();
-			pgroup = getpgrp();
+			//			setsid();
+			//			pgroup = getpgrp();
 #ifdef DEBUG_FASTCGI
 			fprintf(stderr, "Process group %d\n", pgroup);
 #endif
 
-			/* Set up handler to kill children upon exit */
-			act.sa_flags = 0;
-			act.sa_handler = fastcgi_cleanup;
-			if (sigaction(SIGTERM, &act, &old_term) ||
-				sigaction(SIGINT,  &act, &old_int)  ||
-				sigaction(SIGQUIT, &act, &old_quit)
-			) {
-				perror("Can't set signals");
-				exit(1);
-			}
-
 			if (fcgi_in_shutdown()) {
 				goto parent_out;
-			}
-
-			while (parent) {
-				do {
-#ifdef DEBUG_FASTCGI
-					fprintf(stderr, "Forking, %d running\n", running);
-#endif
-					pid = fork();
-					switch (pid) {
-					case 0:
-						/* One of the children.
-						 * Make sure we don't go round the
-						 * fork loop any more
-						 */
-						parent = 0;
-
-						/* don't catch our signals */
-						sigaction(SIGTERM, &old_term, 0);
-						sigaction(SIGQUIT, &old_quit, 0);
-						sigaction(SIGINT,  &old_int,  0);
-						zend_signal_init();
-						break;
-					case -1:
-						perror("php (pre-forking)");
-						exit(1);
-						break;
-					default:
-						/* Fine */
-						running++;
-						break;
-					}
-				} while (parent && (running < children));
-
-				if (parent) {
-#ifdef DEBUG_FASTCGI
-					fprintf(stderr, "Wait for kids, pid %d\n", getpid());
-#endif
-					parent_waiting = 1;
-					while (1) {
-						if (wait(&status) >= 0) {
-							running--;
-							break;
-						} else if (exit_signal) {
-							break;
-						}
-					}
-					if (exit_signal) {
-#if 0
-						while (running > 0) {
-							while (wait(&status) < 0) {
-							}
-							running--;
-						}
-#endif
-						goto parent_out;
-					}
-				}
 			}
 		} else {
 			parent = 0;

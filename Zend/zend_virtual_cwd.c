@@ -1370,35 +1370,7 @@ CWD_API int virtual_utime(const char *filename, struct utimbuf *buf) /* {{{ */
 
 CWD_API int virtual_chmod(const char *filename, mode_t mode) /* {{{ */
 {
-	cwd_state new_state;
-	int ret;
-
-	CWD_STATE_COPY(&new_state, &CWDG(cwd));
-	if (virtual_file_ex(&new_state, filename, NULL, CWD_REALPATH)) {
-		CWD_STATE_FREE_ERR(&new_state);
-		return -1;
-	}
-
-#ifdef ZEND_WIN32
-	{
-		mode_t _tmp = mode;
-
-		mode = 0;
-
-		if (_tmp & _S_IREAD) {
-			mode |= _S_IREAD;
-		}
-		if (_tmp & _S_IWRITE) {
-			mode |= _S_IWRITE;
-		}
-		ret = php_win32_ioutil_chmod(new_state.cwd, mode);
-	}
-#else
-	ret = chmod(new_state.cwd, mode);
-#endif
-
-	CWD_STATE_FREE_ERR(&new_state);
-	return ret;
+  return 0;
 }
 /* }}} */
 

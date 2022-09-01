@@ -38,7 +38,7 @@ PHPAPI void php_syslog_str(int priority, const zend_string* message)
 
 	if (PG(syslog_filter) == PHP_SYSLOG_FILTER_RAW) {
 		/* Just send it directly to the syslog */
-		syslog(priority, "%s", ZSTR_VAL(message));
+	  //		syslog(priority, "%s", ZSTR_VAL(message));
 		return;
 	}
 
@@ -53,7 +53,7 @@ PHPAPI void php_syslog_str(int priority, const zend_string* message)
 			smart_string_appendc(&sbuf, c);
 		} else if (c == '\n') {
 			/* Smart string is not NUL terminated */
-			syslog(priority, "%.*s", (int)sbuf.len, sbuf.c);
+		  //			syslog(priority, "%.*s", (int)sbuf.len, sbuf.c);
 			smart_string_reset(&sbuf);
 		} else if ((c < 0x20) && (PG(syslog_filter) == PHP_SYSLOG_FILTER_ALL)) {
 			smart_string_appendc(&sbuf, c);
@@ -67,19 +67,17 @@ PHPAPI void php_syslog_str(int priority, const zend_string* message)
 	}
 
 	/* Smart string is not NUL terminated */
-	syslog(priority, "%.*s", (int)sbuf.len, sbuf.c);
+	//	syslog(priority, "%.*s", (int)sbuf.len, sbuf.c);
 	smart_string_free(&sbuf);
 }
 
 void php_openlog(const char *ident, int option, int facility)
 {
-	openlog(ident, option, facility);
 	PG(have_called_openlog) = 1;
 }
 
 void php_closelog(void)
 {
-	closelog();
 	PG(have_called_openlog) = 0;
 }
 
@@ -97,9 +95,9 @@ PHPAPI void php_syslog(int priority, const char *format, ...) /* {{{ */
 		php_openlog(PG(syslog_ident), 0, PG(syslog_facility));
 	}
 
-	va_start(args, format);
-	vsyslog(priority, format, args);
-	va_end(args);
+	//	va_start(args, format);
+	//	vsyslog(priority, format, args);
+	//	va_end(args);
 }
 /* }}} */
 #else

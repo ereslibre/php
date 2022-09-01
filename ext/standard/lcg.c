@@ -78,11 +78,6 @@ static void lcg_seed(void) /* {{{ */
 	} else {
 		LCG(s1) = 1;
 	}
-#ifdef ZTS
-	LCG(s2) = (zend_long) tsrm_thread_id();
-#else
-	LCG(s2) = (zend_long) getpid();
-#endif
 
 	/* Add entropy to s2 by calling gettimeofday() again */
 	if (gettimeofday(&tv, NULL) == 0) {

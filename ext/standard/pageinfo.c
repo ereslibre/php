@@ -115,12 +115,8 @@ PHP_FUNCTION(getmypid)
 
 	ZEND_PARSE_PARAMETERS_NONE();
 
-	pid = getpid();
-	if (pid < 0) {
-		RETURN_FALSE;
-	} else {
-		RETURN_LONG(pid);
-	}
+	pid = 1;
+	RETURN_LONG(pid);
 }
 /* }}} */
 
