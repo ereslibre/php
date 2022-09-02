@@ -1762,7 +1762,7 @@ int main(int argc, char *argv[])
 #endif
 
 	sapi_startup(&cgi_sapi_module);
-	fastcgi = fcgi_is_fastcgi();
+	fastcgi = false;
 	cgi_sapi_module.php_ini_path_override = NULL;
 
 #ifdef PHP_WIN32
@@ -1941,7 +1941,7 @@ consult the installation file that came with this distribution, or visit \n\
 #endif
 			return FAILURE;
 		}
-		fastcgi = fcgi_is_fastcgi();
+		fastcgi = false;
 	}
 
 	/* make php call us to get _ENV vars */
