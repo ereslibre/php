@@ -382,6 +382,8 @@ static void fcgi_hash_del(fcgi_hash *h, unsigned int hash_value, char *var, unsi
 
 static char *fcgi_hash_get(fcgi_hash *h, unsigned int hash_value, char *var, unsigned int var_len, unsigned int *val_len)
 {
+  return NULL;
+
 	unsigned int      idx = hash_value & FCGI_HASH_TABLE_MASK;
 	fcgi_hash_bucket *p = h->hash_table[idx];
 
