@@ -98,11 +98,6 @@ int __riscosify_control = __RISCOSIFY_STRICT_UNIX_SPECS;
 # include "valgrind/callgrind.h"
 #endif
 
-#ifndef PHP_WIN32
-/* XXX this will need to change later when threaded fastcgi is implemented.  shane */
-struct sigaction act, old_term, old_quit, old_int;
-#endif
-
 static void (*php_php_import_environment_variables)(zval *array_ptr);
 
 /* these globals used for forking children on unix systems */
@@ -1472,18 +1467,11 @@ static void init_request_info(fcgi_request *request)
 }
 /* }}} */
 
-#ifndef PHP_WIN32
 /**
  * Clean up child processes upon exit
  */
 void fastcgi_cleanup(int signal)
 {
-#ifdef DEBUG_FASTCGI
-	fprintf(stderr, "FastCGI shutdown, pid %d\n", getpid());
-#endif
-
-	sigaction(SIGTERM, &old_term, 0);
-
 	/* Kill all the processes in our process group */
 	kill(-pgroup, SIGTERM);
 
@@ -1493,34 +1481,6 @@ void fastcgi_cleanup(int signal)
 		exit(0);
 	}
 }
-#else
-BOOL WINAPI fastcgi_cleanup(DWORD sig)
-{
-	int i = kids;
-
-	EnterCriticalSection(&cleanup_lock);
-	cleaning_up = 1;
-	LeaveCriticalSection(&cleanup_lock);
-
-	while (0 < i--) {
-		if (NULL == kid_cgi_ps[i]) {
-				continue;
-		}
-
-		TerminateProcess(kid_cgi_ps[i], 0);
-		CloseHandle(kid_cgi_ps[i]);
-		kid_cgi_ps[i] = NULL;
-	}
-
-	if (job) {
-		CloseHandle(job);
-	}
-
-	parent = 0;
-
-	return TRUE;
-}
-#endif
 
 PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("cgi.rfc2616_headers",     "0",  PHP_INI_ALL,    OnUpdateBool,   rfc2616_headers, php_cgi_globals_struct, php_cgi_globals)
@@ -1787,17 +1747,6 @@ int main(int argc, char *argv[])
 	char *decoded_query_string;
 	int skip_getopt = 0;
 
-#ifdef HAVE_SIGNAL_H
-#if defined(SIGPIPE) && defined(SIG_IGN)
-	signal(SIGPIPE, SIG_IGN); /* ignore SIGPIPE in standalone mode so
-								that sockets created via fsockopen()
-								don't kill PHP if the remote site
-								closes it.  in apache|apxs mode apache
-								does that for us!  thies@thieso.net
-								20000419 */
-#endif
-#endif
-
 #ifdef ZTS
 	tsrm_startup(1, 1, 0, NULL);
 	(void)ts_resource(0);
@@ -2048,82 +1997,12 @@ consult the installation file that came with this distribution, or visit \n\
 			pid_t pid;
 
 			/* Create a process group for ourself & children */
-			setsid();
-			pgroup = getpgrp();
 #ifdef DEBUG_FASTCGI
 			fprintf(stderr, "Process group %d\n", pgroup);
 #endif
 
-			/* Set up handler to kill children upon exit */
-			act.sa_flags = 0;
-			act.sa_handler = fastcgi_cleanup;
-			if (sigaction(SIGTERM, &act, &old_term) ||
-				sigaction(SIGINT,  &act, &old_int)  ||
-				sigaction(SIGQUIT, &act, &old_quit)
-			) {
-				perror("Can't set signals");
-				exit(1);
-			}
-
 			if (fcgi_in_shutdown()) {
 				goto parent_out;
-			}
-
-			while (parent) {
-				do {
-#ifdef DEBUG_FASTCGI
-					fprintf(stderr, "Forking, %d running\n", running);
-#endif
-					pid = fork();
-					switch (pid) {
-					case 0:
-						/* One of the children.
-						 * Make sure we don't go round the
-						 * fork loop any more
-						 */
-						parent = 0;
-
-						/* don't catch our signals */
-						sigaction(SIGTERM, &old_term, 0);
-						sigaction(SIGQUIT, &old_quit, 0);
-						sigaction(SIGINT,  &old_int,  0);
-						zend_signal_init();
-						break;
-					case -1:
-						perror("php (pre-forking)");
-						exit(1);
-						break;
-					default:
-						/* Fine */
-						running++;
-						break;
-					}
-				} while (parent && (running < children));
-
-				if (parent) {
-#ifdef DEBUG_FASTCGI
-					fprintf(stderr, "Wait for kids, pid %d\n", getpid());
-#endif
-					parent_waiting = 1;
-					while (1) {
-						if (wait(&status) >= 0) {
-							running--;
-							break;
-						} else if (exit_signal) {
-							break;
-						}
-					}
-					if (exit_signal) {
-#if 0
-						while (running > 0) {
-							while (wait(&status) < 0) {
-							}
-							running--;
-						}
-#endif
-						goto parent_out;
-					}
-				}
 			}
 		} else {
 			parent = 0;

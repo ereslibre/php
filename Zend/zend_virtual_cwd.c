@@ -1634,7 +1634,6 @@ CWD_API int virtual_chmod(const char *filename, mode_t mode) /* {{{ */
 		ret = php_win32_ioutil_chmod(new_state.cwd, mode);
 	}
 #else
-	ret = chmod(new_state.cwd, mode);
 #endif
 
 	CWD_STATE_FREE_ERR(&new_state);
@@ -1661,7 +1660,6 @@ CWD_API int virtual_chown(const char *filename, uid_t owner, gid_t group, int li
 		ret = -1;
 #endif
 	} else {
-		ret = chown(new_state.cwd, owner, group);
 	}
 
 	CWD_STATE_FREE_ERR(&new_state);
@@ -1939,7 +1937,6 @@ CWD_API FILE *virtual_popen(const char *command, const char *type) /* {{{ */
 	*ptr++ = ' ';
 
 	memcpy(ptr, command, command_length+1);
-	retval = popen(command_line, type);
 
 	efree(command_line);
 	return retval;

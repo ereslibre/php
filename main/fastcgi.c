@@ -35,11 +35,6 @@
 
 typedef unsigned int in_addr_t;
 
-struct sockaddr_un {
-	short   sun_family;
-	char    sun_path[MAXPATHLEN];
-};
-
 static HANDLE fcgi_accept_mutex = INVALID_HANDLE_VALUE;
 static int is_impersonate = 0;
 
@@ -71,7 +66,6 @@ static int is_impersonate = 0;
 # include <netinet/in.h>
 # include <netinet/tcp.h>
 # include <arpa/inet.h>
-# include <netdb.h>
 # include <signal.h>
 
 # if defined(HAVE_POLL_H) && defined(HAVE_POLL)
@@ -433,17 +427,6 @@ static void fcgi_signal_handler(int signo)
 
 static void fcgi_setup_signals(void)
 {
-	struct sigaction new_sa, old_sa;
-
-	sigemptyset(&new_sa.sa_mask);
-	new_sa.sa_flags = 0;
-	new_sa.sa_handler = fcgi_signal_handler;
-	sigaction(SIGUSR1, &new_sa, NULL);
-	sigaction(SIGTERM, &new_sa, NULL);
-	sigaction(SIGPIPE, NULL, &old_sa);
-	if (old_sa.sa_handler == SIG_DFL) {
-		sigaction(SIGPIPE, &new_sa, NULL);
-	}
 }
 #endif
 
@@ -535,12 +518,7 @@ int fcgi_init(void)
 		}
 #else
 		errno = 0;
-		if (getpeername(0, (struct sockaddr *)&sa, &len) != 0 && errno == ENOTCONN) {
-			fcgi_setup_signals();
-			return is_fastcgi = 1;
-		} else {
-			return is_fastcgi = 0;
-		}
+		return is_fastcgi = 0;
 #endif
 	}
 	return is_fastcgi;
@@ -690,24 +668,6 @@ int fcgi_listen(const char *path, int backlog)
 		if (!*host || !strncmp(host, "*", sizeof("*")-1)) {
 			sa.sa_inet.sin_addr.s_addr = htonl(INADDR_ANY);
 		} else {
-			sa.sa_inet.sin_addr.s_addr = inet_addr(host);
-			if (sa.sa_inet.sin_addr.s_addr == INADDR_NONE) {
-				struct hostent *hep;
-
-				if(strlen(host) > MAXFQDNLEN) {
-					hep = NULL;
-				} else {
-					hep = php_network_gethostbyname(host);
-				}
-				if (!hep || hep->h_addrtype != AF_INET || !hep->h_addr_list[0]) {
-					fcgi_log(FCGI_ERROR, "Cannot resolve host name '%s'!\n", host);
-					return -1;
-				} else if (hep->h_addr_list[1]) {
-					fcgi_log(FCGI_ERROR, "Host '%s' has multiple addresses. You must choose one explicitly!\n", host);
-					return -1;
-				}
-				sa.sa_inet.sin_addr.s_addr = ((struct in_addr*)hep->h_addr_list[0])->s_addr;
-			}
 		}
 	} else {
 #ifdef _WIN32
@@ -739,15 +699,8 @@ int fcgi_listen(const char *path, int backlog)
 #else
 		size_t path_len = strlen(path);
 
-		if (path_len >= sizeof(sa.sa_unix.sun_path)) {
-			fcgi_log(FCGI_ERROR, "Listening socket's path name is too long.\n");
-			return -1;
-		}
-
 		memset(&sa.sa_unix, 0, sizeof(sa.sa_unix));
 		sa.sa_unix.sun_family = AF_UNIX;
-		memcpy(sa.sa_unix.sun_path, path, path_len + 1);
-		sock_len = (size_t)(((struct sockaddr_un *)0)->sun_path)	+ path_len;
 #ifdef HAVE_SOCKADDR_UN_SUN_LEN
 		sa.sa_unix.sun_len = sock_len;
 #endif
@@ -756,19 +709,8 @@ int fcgi_listen(const char *path, int backlog)
 	}
 
 	/* Create, bind socket and start listen on it */
-	if ((listen_socket = socket(sa.sa.sa_family, SOCK_STREAM, 0)) < 0 ||
-#ifdef SO_REUSEADDR
-	    setsockopt(listen_socket, SOL_SOCKET, SO_REUSEADDR, (char*)&reuse, sizeof(reuse)) < 0 ||
-#endif
-	    bind(listen_socket, (struct sockaddr *) &sa, sock_len) < 0 ||
-	    listen(listen_socket, backlog) < 0) {
-		close(listen_socket);
-		fcgi_log(FCGI_ERROR, "Cannot bind/listen socket - [%d] %s.\n",errno, strerror(errno));
-		return -1;
-	}
 
 	if (!tcp) {
-		chmod(path, 0777);
 	} else {
 		char *ip = getenv("FCGI_WEB_SERVER_ADDRS");
 		char *cur, *end;
@@ -1102,7 +1044,6 @@ static int fcgi_read_request(fcgi_request *req)
 			int on = 1;
 # endif
 
-			setsockopt(req->fd, IPPROTO_TCP, TCP_NODELAY, (char*)&on, sizeof(on));
 			req->nodelay = 1;
 		}
 #endif
@@ -1296,7 +1237,6 @@ void fcgi_close(fcgi_request *req, int force, int destroy)
 				/* read any remaining data, it may be omitted */
 				while (recv(req->fd, buf, sizeof(buf), 0) > 0) {}
 			}
-			closesocket(req->fd);
 		}
 #else
 		if (!force) {
@@ -1412,7 +1352,6 @@ int fcgi_accept_request(fcgi_request *req)
 					client_sa = sa;
 					if (req->fd >= 0 && !fcgi_is_allowed()) {
 						fcgi_log(FCGI_ERROR, "Connection disallowed: IP address '%s' has been dropped.", fcgi_get_last_client_ip());
-						closesocket(req->fd);
 						req->fd = -1;
 						continue;
 					}

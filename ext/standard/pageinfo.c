@@ -36,12 +36,12 @@
 #  include <grp.h>
 # endif
 #endif
-#ifdef PHP_WIN32
+
 #undef getgid
 #define getgroups(a, b) 0
 #define getgid() 1
 #define getuid() 1
-#endif
+
 #if HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -138,7 +138,7 @@ PHP_FUNCTION(getmypid)
 		return;
 	}
 
-	pid = getpid();
+	pid = 1;
 	if (pid < 0) {
 		RETURN_FALSE;
 	} else {

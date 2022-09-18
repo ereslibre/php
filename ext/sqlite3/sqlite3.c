@@ -405,16 +405,6 @@ PHP_METHOD(sqlite3, loadExtension)
 		RETURN_FALSE;
 	}
 
-	/* Extension loading should only be enabled for when we attempt to load */
-	sqlite3_enable_load_extension(db_obj->db, 1);
-	if (sqlite3_load_extension(db_obj->db, fullpath, 0, &errtext) != SQLITE_OK) {
-		php_sqlite3_error(db_obj, "%s", errtext);
-		sqlite3_free(errtext);
-		sqlite3_enable_load_extension(db_obj->db, 0);
-		RETURN_FALSE;
-	}
-	sqlite3_enable_load_extension(db_obj->db, 0);
-
 	RETURN_TRUE;
 }
 /* }}} */

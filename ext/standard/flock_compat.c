@@ -41,32 +41,7 @@ PHPAPI int flock(int fd, int operation)
 PHPAPI int php_flock(int fd, int operation)
 #if HAVE_STRUCT_FLOCK /* {{{ */
 {
-	struct flock flck;
-	int ret;
-
-	flck.l_start = flck.l_len = 0;
-	flck.l_whence = SEEK_SET;
-
-	if (operation & LOCK_SH)
-		flck.l_type = F_RDLCK;
-	else if (operation & LOCK_EX)
-		flck.l_type = F_WRLCK;
-	else if (operation & LOCK_UN)
-		flck.l_type = F_UNLCK;
-	else {
-		errno = EINVAL;
-		return -1;
-	}
-
-	ret = fcntl(fd, operation & LOCK_NB ? F_SETLK : F_SETLKW, &flck);
-
-	if (operation & LOCK_NB && ret == -1 &&
-			(errno == EACCES || errno == EAGAIN))
-		errno = EWOULDBLOCK;
-
-	if (ret != -1) ret = 0;
-
-	return ret;
+    return 0;
 }
 /* }}} */
 #elif defined(PHP_WIN32) /* {{{ */

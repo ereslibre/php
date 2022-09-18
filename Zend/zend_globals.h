@@ -21,8 +21,6 @@
 #define ZEND_GLOBALS_H
 
 
-#include <setjmp.h>
-
 #include "zend_globals_macros.h"
 
 #include "zend_stack.h"
@@ -141,7 +139,7 @@ struct _zend_executor_globals {
 
 	HashTable included_files;	/* files already included */
 
-	JMP_BUF *bailout;
+	//JMP_BUF *bailout;
 
 	int error_reporting;
 	int exit_status;

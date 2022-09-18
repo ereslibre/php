@@ -24,6 +24,11 @@
 
 #define ZEND_ENGINE_3
 
+#define LOG_NOTICE 1
+#define LOG_ERR 1
+#define LOG_WARNING 1
+#define LOG_INFO 1
+
 #include "zend_types.h"
 #include "zend_errors.h"
 #include "zend_alloc.h"
@@ -200,21 +205,14 @@ typedef int (*zend_write_func_t)(const char *str, size_t str_length);
 
 #define zend_bailout()		_zend_bailout(__FILE__, __LINE__)
 
-#define zend_try												\
-	{															\
-		JMP_BUF *__orig_bailout = EG(bailout);					\
-		JMP_BUF __bailout;										\
-																\
-		EG(bailout) = &__bailout;								\
-		if (SETJMP(__bailout)==0) {
-#define zend_catch												\
-		} else {												\
-			EG(bailout) = __orig_bailout;
-#define zend_end_try()											\
-		}														\
-		EG(bailout) = __orig_bailout;							\
-	}
-#define zend_first_try		EG(bailout)=NULL;	zend_try
+#define zend_try if (1) { \
+    printf("this is a try\n");
+#define zend_catch } else { \
+    printf("this is a catch\n");
+#define zend_end_try() \
+    printf("this is an end try\n"); \
+}
+#define zend_first_try zend_try
 
 BEGIN_EXTERN_C()
 int zend_startup(zend_utility_functions *utility_functions, char **extensions);

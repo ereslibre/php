@@ -39,8 +39,6 @@
 # include <ws2ipdef.h>
 # include <Ws2tcpip.h>
 # include <iphlpapi.h>
-#else
-# include <netdb.h>
 #endif
 
 PHPAPI zend_string* php_inet_ntop(const struct sockaddr *addr) {
@@ -82,15 +80,6 @@ PHPAPI zend_string* php_inet_ntop(const struct sockaddr *addr) {
 			/* fallthrough */
 #endif
 		case AF_INET: {
-			zend_string *ret = zend_string_alloc(NI_MAXHOST, 0);
-			if (getnameinfo(addr, addrlen, ZSTR_VAL(ret), NI_MAXHOST, NULL, 0, NI_NUMERICHOST) == SUCCESS) {
-				/* Also demangle numeric host with %name suffix */
-				char *colon = strchr(ZSTR_VAL(ret), '%');
-				if (colon) { *colon = 0; }
-				ZSTR_LEN(ret) = strlen(ZSTR_VAL(ret));
-				return ret;
-			}
-			zend_string_efree(ret);
 			break;
 		}
 	}

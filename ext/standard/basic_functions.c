@@ -62,7 +62,6 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 #endif
 
 #ifndef PHP_WIN32
-# include <netdb.h>
 #else
 #include "win32/inet.h"
 #endif
@@ -1262,11 +1261,6 @@ ZEND_BEGIN_ARG_INFO(arginfo_lchown, 0)
 	ZEND_ARG_INFO(0, user)
 ZEND_END_ARG_INFO()
 #endif
-
-ZEND_BEGIN_ARG_INFO(arginfo_chmod, 0)
-	ZEND_ARG_INFO(0, filename)
-	ZEND_ARG_INFO(0, mode)
-ZEND_END_ARG_INFO()
 
 #if HAVE_UTIME
 ZEND_BEGIN_ARG_INFO_EX(arginfo_touch, 0, 0, 1)
@@ -3283,7 +3277,6 @@ static const zend_function_entry basic_functions[] = { /* {{{ */
 #if HAVE_LCHOWN
 	PHP_FE(lchgrp,															arginfo_lchgrp)
 #endif
-	PHP_FE(chmod,															arginfo_chmod)
 #if HAVE_UTIME
 	PHP_FE(touch,															arginfo_touch)
 #endif
@@ -3845,10 +3838,6 @@ PHP_RSHUTDOWN_FUNCTION(basic) /* {{{ */
 #endif
 
 	BG(mt_rand_is_seeded) = 0;
-
-	if (BG(umask) != -1) {
-		umask(BG(umask));
-	}
 
 	/* Check if locale was changed and change it back
 	 * to the value in startup environment */
@@ -5944,16 +5933,6 @@ PHP_FUNCTION(move_uploaded_file)
 
 	if (VCWD_RENAME(path, new_path) == 0) {
 		successful = 1;
-#ifndef PHP_WIN32
-		oldmask = umask(077);
-		umask(oldmask);
-
-		ret = VCWD_CHMOD(new_path, 0666 & ~oldmask);
-
-		if (ret == -1) {
-			php_error_docref(NULL, E_WARNING, "%s", strerror(errno));
-		}
-#endif
 	} else if (php_copy_file_ex(path, new_path, STREAM_DISABLE_OPEN_BASEDIR) == SUCCESS) {
 		VCWD_UNLINK(path);
 		successful = 1;

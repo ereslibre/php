@@ -36,7 +36,6 @@
 #if HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
-#include <netdb.h>
 #ifdef _OSD_POSIX
 #undef STATUS
 #undef T_UNSPEC
@@ -174,35 +173,7 @@ PHP_FUNCTION(gethostbyaddr)
 /* {{{ php_gethostbyaddr */
 static zend_string *php_gethostbyaddr(char *ip)
 {
-#if HAVE_IPV6 && HAVE_INET_PTON
-	struct in6_addr addr6;
-#endif
-	struct in_addr addr;
-	struct hostent *hp;
-
-#if HAVE_IPV6 && HAVE_INET_PTON
-	if (inet_pton(AF_INET6, ip, &addr6)) {
-		hp = gethostbyaddr((char *) &addr6, sizeof(addr6), AF_INET6);
-	} else if (inet_pton(AF_INET, ip, &addr)) {
-		hp = gethostbyaddr((char *) &addr, sizeof(addr), AF_INET);
-	} else {
-		return NULL;
-	}
-#else
-	addr.s_addr = inet_addr(ip);
-
-	if (addr.s_addr == -1) {
-		return NULL;
-	}
-
-	hp = gethostbyaddr((char *) &addr, sizeof(addr), AF_INET);
-#endif
-
-	if (!hp || hp->h_name == NULL || hp->h_name[0] == '\0') {
-		return zend_string_init(ip, strlen(ip), 0);
-	}
-
-	return zend_string_init(hp->h_name, strlen(hp->h_name), 0);
+    return NULL;
 }
 /* }}} */
 
@@ -231,53 +202,14 @@ PHP_FUNCTION(gethostbyname)
    Return a list of IP addresses that a given hostname resolves to. */
 PHP_FUNCTION(gethostbynamel)
 {
-	char *hostname;
-	size_t hostname_len;
-	struct hostent *hp;
-	struct in_addr in;
-	int i;
-
-	ZEND_PARSE_PARAMETERS_START(1, 1)
-		Z_PARAM_STRING(hostname, hostname_len)
-	ZEND_PARSE_PARAMETERS_END();
-
-	if(hostname_len > MAXFQDNLEN) {
-		/* name too long, protect from CVE-2015-0235 */
-		php_error_docref(NULL, E_WARNING, "Host name is too long, the limit is %d characters", MAXFQDNLEN);
-		RETURN_FALSE;
-	}
-
-	hp = php_network_gethostbyname(hostname);
-	if (hp == NULL || hp->h_addr_list == NULL) {
-		RETURN_FALSE;
-	}
-
-	array_init(return_value);
-
-	for (i = 0 ; hp->h_addr_list[i] != 0 ; i++) {
-		in = *(struct in_addr *) hp->h_addr_list[i];
-		add_next_index_string(return_value, inet_ntoa(in));
-	}
+    RETURN_FALSE;
 }
 /* }}} */
 
 /* {{{ php_gethostbyname */
 static zend_string *php_gethostbyname(char *name)
 {
-	struct hostent *hp;
-	struct in_addr in;
-	char *address;
-
-	hp = php_network_gethostbyname(name);
-
-	if (!hp || !*(hp->h_addr_list)) {
-		return zend_string_init(name, strlen(name), 0);
-	}
-
-	memcpy(&in.s_addr, *(hp->h_addr_list), sizeof(in.s_addr));
-
-	address = inet_ntoa(in);
-	return zend_string_init(address, strlen(address), 0);
+    return NULL;
 }
 /* }}} */
 

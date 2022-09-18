@@ -46,7 +46,6 @@ PHPAPI void php_syslog(int priority, const char *format, ...) /* {{{ */
 	 * correct parameters!
 	 */
 	if (!PG(have_called_openlog)) {
-		php_openlog(PG(syslog_ident), 0, PG(syslog_facility));
 	}
 
 	va_start(args, format);
@@ -69,7 +68,6 @@ PHPAPI void php_syslog(int priority, const char *format, ...) /* {{{ */
 	 * correct parameters!
 	 */
 	if (!PG(have_called_openlog)) {
-		php_openlog(PG(syslog_ident), 0, PG(syslog_facility));
 	}
 
 	va_start(args, format);
@@ -79,7 +77,6 @@ PHPAPI void php_syslog(int priority, const char *format, ...) /* {{{ */
 
 	if (PG(syslog_filter) == PHP_SYSLOG_FILTER_RAW) {
 		/* Just send it directly to the syslog */
-		syslog(priority, "%.*s", (int)fbuf.len, fbuf.c);
 		smart_string_free(&fbuf);
 		return;
 	}
@@ -87,7 +84,6 @@ PHPAPI void php_syslog(int priority, const char *format, ...) /* {{{ */
 	for (ptr = fbuf.c; ; ++ptr) {
 		c = *ptr;
 		if (c == '\0') {
-			syslog(priority, "%.*s", (int)sbuf.len, sbuf.c);
 			break;
 		}
 
@@ -97,7 +93,6 @@ PHPAPI void php_syslog(int priority, const char *format, ...) /* {{{ */
 		else if ((c >= 0x80) && (PG(syslog_filter) != PHP_SYSLOG_FILTER_ASCII))
 			smart_string_appendc(&sbuf, c);
 		else if (c == '\n') {
-			syslog(priority, "%.*s", (int)sbuf.len, sbuf.c);
 			smart_string_reset(&sbuf);
 		} else if ((c < 0x20) && (PG(syslog_filter) == PHP_SYSLOG_FILTER_ALL))
 			smart_string_appendc(&sbuf, c);

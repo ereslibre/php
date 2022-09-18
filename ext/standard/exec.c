@@ -110,11 +110,6 @@ PHPAPI int php_exec(int type, char *cmd, zval *array, zval *return_value)
 	sig_handler = signal (SIGCHLD, SIG_DFL);
 #endif
 
-#ifdef PHP_WIN32
-	fp = VCWD_POPEN(cmd, "rb");
-#else
-	fp = VCWD_POPEN(cmd, "r");
-#endif
 	if (!fp) {
 		php_error_docref(NULL, E_WARNING, "Unable to fork [%s]", cmd);
 		goto err;
@@ -543,15 +538,6 @@ PHP_FUNCTION(shell_exec)
 	}
 	if (strlen(command) != command_len) {
 		php_error_docref(NULL, E_WARNING, "NULL byte detected. Possible attack");
-		RETURN_FALSE;
-	}
-
-#ifdef PHP_WIN32
-	if ((in=VCWD_POPEN(command, "rt"))==NULL) {
-#else
-	if ((in=VCWD_POPEN(command, "r"))==NULL) {
-#endif
-		php_error_docref(NULL, E_WARNING, "Unable to execute '%s'", command);
 		RETURN_FALSE;
 	}
 
