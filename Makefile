@@ -4,8 +4,8 @@ top_srcdir = /home/ereslibre/projects/php
 top_builddir = /home/ereslibre/projects/php
 EGREP = /nix/store/qd9jxc0q00cr7fp30y6jbbww20gj33lg-gnugrep-3.7/bin/grep -E
 SED = /nix/store/lgvd2fh4cndlv8mnyy49jp1nplpml3xp-gnused-4.8/bin/sed
-CONFIGURE_COMMAND = './configure' '--host=wasm32-wasi' '--disable-libxml' '--disable-dom' '--without-iconv' '--without-openssl' '--disable-simplexml' '--disable-xml' '--disable-xmlreader' '--disable-xmlwriter' '--without-pear' '--disable-phar' '--disable-opcache' '--disable-zend-signals' '--without-pcre-jit' '--with-sqlite3' '--enable-pdo' '--with-pdo-sqlite' 'host_alias=wasm32-wasi'
-CONFIGURE_OPTIONS = '--host=wasm32-wasi' '--disable-libxml' '--disable-dom' '--without-iconv' '--without-openssl' '--disable-simplexml' '--disable-xml' '--disable-xmlreader' '--disable-xmlwriter' '--without-pear' '--disable-phar' '--disable-opcache' '--disable-zend-signals' '--without-pcre-jit' '--with-sqlite3' '--enable-pdo' '--with-pdo-sqlite' 'host_alias=wasm32-wasi'
+CONFIGURE_COMMAND = './configure' '--host=wasm32-wasi' 'host_alias=wasm32-musl-wasi' '--disable-libxml' '--disable-dom' '--without-iconv' '--without-openssl' '--disable-simplexml' '--disable-xml' '--disable-xmlreader' '--disable-xmlwriter' '--without-pear' '--disable-phar' '--disable-opcache' '--disable-zend-signals' '--without-pcre-jit' '--with-sqlite3' '--enable-pdo' '--with-pdo-sqlite' '--target=wasm32-wasi' 'target_alias=wasm32-musl-wasi'
+CONFIGURE_OPTIONS = '--host=wasm32-wasi' 'host_alias=wasm32-musl-wasi' '--disable-libxml' '--disable-dom' '--without-iconv' '--without-openssl' '--disable-simplexml' '--disable-xml' '--disable-xmlreader' '--disable-xmlwriter' '--without-pear' '--disable-phar' '--disable-opcache' '--disable-zend-signals' '--without-pcre-jit' '--with-sqlite3' '--enable-pdo' '--with-pdo-sqlite' '--target=wasm32-wasi' 'target_alias=wasm32-musl-wasi'
 PHP_MAJOR_VERSION = 7
 PHP_MINOR_VERSION = 3
 PHP_RELEASE_VERSION = 33
@@ -54,7 +54,7 @@ php_abs_top_srcdir = /home/ereslibre/projects/php
 bindir = ${exec_prefix}/bin
 sbindir = ${exec_prefix}/sbin
 exec_prefix = ${prefix}
-program_prefix =
+program_prefix = wasm32-musl-wasi-
 program_suffix =
 includedir = ${prefix}/include
 libdir = ${exec_prefix}/lib/php
@@ -77,9 +77,8 @@ CXXFLAGS = -prefer-non-pic -static $(PROF_FLAGS)
 CXXFLAGS_CLEAN =
 DEBUG_CFLAGS =
 EXTENSION_DIR = /usr/local/lib/php/extensions/no-debug-non-zts-20180731
-EXTRA_CFLAGS = -D_WASI_EMULATED_MMAN=1 -D_WASI_EMULATED_SIGNAL=1 -D_WASI_EMULATED_PROCESS_CLOCKS=1 -D_WASI_EMULATED_GETPID=1 -D_POSIX_SOURCE=1 -D_GNU_SOURCE -DHAVE_FORK=0
 EXTRA_LDFLAGS =
-EXTRA_LDFLAGS_PROGRAM = -lwasi-emulated-mman -lwasi-emulated-signal -lwasi-emulated-process-clocks -lwasi-emulated-getpid
+EXTRA_LDFLAGS_PROGRAM =
 EXTRA_LIBS = -lcrypt -lcrypt -lrt -lrt -lm -lcrypt -lcrypt
 ZEND_EXTRA_LIBS =
 INCLUDES = -I/home/ereslibre/projects/php/ext/date/lib -I/home/ereslibre/projects/php/ext/sqlite3/libsqlite -I$(top_builddir)/TSRM -I$(top_builddir)/Zend
