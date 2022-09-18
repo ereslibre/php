@@ -68,8 +68,6 @@ PHPAPI void php_statpage(void)
 			BG(page_inode) = pstat->st_ino;
 			BG(page_mtime) = pstat->st_mtime;
 		} else { /* handler for situations where there is no source file, ex. php -r */
-			BG(page_uid) = getuid();
-			BG(page_gid) = getgid();
 		}
 	}
 }
@@ -79,33 +77,20 @@ PHPAPI void php_statpage(void)
  */
 zend_long php_getuid(void)
 {
-	php_statpage();
-	return (BG(page_uid));
+	return 0;
 }
 /* }}} */
 
 zend_long php_getgid(void)
 {
-	php_statpage();
-	return (BG(page_gid));
+	return 0;
 }
 
 /* {{{ proto int getmyuid(void)
    Get PHP script owner's UID */
 PHP_FUNCTION(getmyuid)
 {
-	zend_long uid;
-
-	if (zend_parse_parameters_none() == FAILURE) {
-		return;
-	}
-
-	uid = php_getuid();
-	if (uid < 0) {
-		RETURN_FALSE;
-	} else {
-		RETURN_LONG(uid);
-	}
+    RETURN_LONG(0);
 }
 /* }}} */
 

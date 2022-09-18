@@ -206,18 +206,6 @@ file_fsmagic(struct magic_set *ms, const char *fn, zend_stat_t *sb, php_stream *
 	return 1;
 #endif
 
-#ifdef	S_IFSOCK
-#ifndef __COHERENT__
-	case S_IFSOCK:
-		if (mime) {
-			if (handle_mime(ms, mime, "socket") == -1)
-				return -1;
-		} else if (silent) {
-		} else if (file_printf(ms, "%ssocket", COMMA) == -1)
-			return -1;
-		break;
-#endif
-#endif
 	case S_IFREG:
 		/*
 		 * regular file, check next possibility

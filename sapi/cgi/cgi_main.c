@@ -28,6 +28,7 @@
 
 #include "SAPI.h"
 
+#include <signal.h>
 #include <stdio.h>
 
 #ifdef PHP_WIN32
@@ -96,11 +97,6 @@ int __riscosify_control = __RISCOSIFY_STRICT_UNIX_SPECS;
 
 #ifdef HAVE_VALGRIND
 # include "valgrind/callgrind.h"
-#endif
-
-#ifndef PHP_WIN32
-/* XXX this will need to change later when threaded fastcgi is implemented.  shane */
-struct sigaction act, old_term, old_quit, old_int;
 #endif
 
 static void (*php_php_import_environment_variables)(zval *array_ptr);
@@ -1478,20 +1474,7 @@ static void init_request_info(fcgi_request *request)
  */
 void fastcgi_cleanup(int signal)
 {
-#ifdef DEBUG_FASTCGI
-	fprintf(stderr, "FastCGI shutdown, pid %d\n", getpid());
-#endif
-
-	sigaction(SIGTERM, &old_term, 0);
-
-	/* Kill all the processes in our process group */
-	kill(-pgroup, SIGTERM);
-
-	if (parent && parent_waiting) {
-		exit_signal = 1;
-	} else {
-		exit(0);
-	}
+    exit(0);
 }
 #else
 BOOL WINAPI fastcgi_cleanup(DWORD sig)
@@ -1787,24 +1770,19 @@ int main(int argc, char *argv[])
 	char *decoded_query_string;
 	int skip_getopt = 0;
 
-#ifdef HAVE_SIGNAL_H
-#if defined(SIGPIPE) && defined(SIG_IGN)
+    signal(SIGILL, SIG_IGN);
 	signal(SIGPIPE, SIG_IGN); /* ignore SIGPIPE in standalone mode so
 								that sockets created via fsockopen()
 								don't kill PHP if the remote site
 								closes it.  in apache|apxs mode apache
 								does that for us!  thies@thieso.net
 								20000419 */
-#endif
-#endif
 
 #ifdef ZTS
 	tsrm_startup(1, 1, 0, NULL);
 	(void)ts_resource(0);
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
-
-	zend_signal_startup();
 
 #ifdef ZTS
 	ts_allocate_id(&php_cgi_globals_id, sizeof(php_cgi_globals_struct), (ts_allocate_ctor) php_cgi_globals_ctor, NULL);
@@ -1933,46 +1911,6 @@ int main(int argc, char *argv[])
 		return FAILURE;
 	}
 
-	/* check force_cgi after startup, so we have proper output */
-	if (cgi && CGIG(force_redirect)) {
-		/* Apache will generate REDIRECT_STATUS,
-		 * Netscape and redirect.so will generate HTTP_REDIRECT_STATUS.
-		 * redirect.so and installation instructions available from
-		 * http://www.koehntopp.de/php.
-		 *   -- kk@netuse.de
-		 */
-		if (!getenv("REDIRECT_STATUS") &&
-			!getenv ("HTTP_REDIRECT_STATUS") &&
-			/* this is to allow a different env var to be configured
-			 * in case some server does something different than above */
-			(!CGIG(redirect_status_env) || !getenv(CGIG(redirect_status_env)))
-		) {
-			zend_try {
-				SG(sapi_headers).http_response_code = 400;
-				PUTS("<b>Security Alert!</b> The PHP CGI cannot be accessed directly.\n\n\
-<p>This PHP CGI binary was compiled with force-cgi-redirect enabled.  This\n\
-means that a page will only be served up if the REDIRECT_STATUS CGI variable is\n\
-set, e.g. via an Apache Action directive.</p>\n\
-<p>For more information as to <i>why</i> this behaviour exists, see the <a href=\"http://php.net/security.cgi-bin\">\
-manual page for CGI security</a>.</p>\n\
-<p>For more information about changing this behaviour or re-enabling this webserver,\n\
-consult the installation file that came with this distribution, or visit \n\
-<a href=\"http://php.net/install.windows\">the manual page</a>.</p>\n");
-			} zend_catch {
-			} zend_end_try();
-#if defined(ZTS) && !defined(PHP_DEBUG)
-			/* XXX we're crashing here in msvc6 debug builds at
-			 * php_message_handler_for_zend:839 because
-			 * SG(request_info).path_translated is an invalid pointer.
-			 * It still happens even though I set it to null, so something
-			 * weird is going on.
-			 */
-			tsrm_shutdown();
-#endif
-			return FAILURE;
-		}
-	}
-
 #ifndef HAVE_ATTRIBUTE_WEAK
 	fcgi_set_logger(fcgi_log);
 #endif
@@ -2048,22 +1986,10 @@ consult the installation file that came with this distribution, or visit \n\
 			pid_t pid;
 
 			/* Create a process group for ourself & children */
-			setsid();
-			pgroup = getpgrp();
+			pgroup = 0;
 #ifdef DEBUG_FASTCGI
 			fprintf(stderr, "Process group %d\n", pgroup);
 #endif
-
-			/* Set up handler to kill children upon exit */
-			act.sa_flags = 0;
-			act.sa_handler = fastcgi_cleanup;
-			if (sigaction(SIGTERM, &act, &old_term) ||
-				sigaction(SIGINT,  &act, &old_int)  ||
-				sigaction(SIGQUIT, &act, &old_quit)
-			) {
-				perror("Can't set signals");
-				exit(1);
-			}
 
 			if (fcgi_in_shutdown()) {
 				goto parent_out;
@@ -2074,7 +2000,7 @@ consult the installation file that came with this distribution, or visit \n\
 #ifdef DEBUG_FASTCGI
 					fprintf(stderr, "Forking, %d running\n", running);
 #endif
-					pid = fork();
+					pid = 1;
 					switch (pid) {
 					case 0:
 						/* One of the children.
@@ -2083,12 +2009,7 @@ consult the installation file that came with this distribution, or visit \n\
 						 */
 						parent = 0;
 
-						/* don't catch our signals */
-						sigaction(SIGTERM, &old_term, 0);
-						sigaction(SIGQUIT, &old_quit, 0);
-						sigaction(SIGINT,  &old_int,  0);
-						zend_signal_init();
-						break;
+                        break;
 					case -1:
 						perror("php (pre-forking)");
 						exit(1);
@@ -2106,19 +2027,10 @@ consult the installation file that came with this distribution, or visit \n\
 #endif
 					parent_waiting = 1;
 					while (1) {
-						if (wait(&status) >= 0) {
-							running--;
-							break;
-						} else if (exit_signal) {
-							break;
-						}
 					}
 					if (exit_signal) {
 #if 0
 						while (running > 0) {
-							while (wait(&status) < 0) {
-							}
-							running--;
 						}
 #endif
 						goto parent_out;

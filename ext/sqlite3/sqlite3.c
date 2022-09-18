@@ -465,6 +465,8 @@ PHP_METHOD(sqlite3, escapeString)
    Returns a prepared SQL statement for execution. */
 PHP_METHOD(sqlite3, prepare)
 {
+  fprintf(stderr, "sqlite3::prepare 1\n");
+
 	php_sqlite3_db_object *db_obj;
 	php_sqlite3_stmt *stmt_obj;
 	zval *object = getThis();

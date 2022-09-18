@@ -31,10 +31,12 @@
 
 static int pdo_sqlite_stmt_dtor(pdo_stmt_t *stmt)
 {
+    fprintf(stderr, "pdo_sqlite_stmt_dtor\n");
+
 	pdo_sqlite_stmt *S = (pdo_sqlite_stmt*)stmt->driver_data;
 
 	if (S->stmt) {
-		sqlite3_finalize(S->stmt);
+        //		sqlite3_finalize(S->stmt);
 		S->stmt = NULL;
 	}
 	efree(S);
@@ -51,6 +53,8 @@ static int pdo_sqlite_stmt_dtor(pdo_stmt_t *stmt)
  */
 static void pdo_sqlite_stmt_set_column_count(pdo_stmt_t *stmt, int new_count)
 {
+    fprintf(stderr, "pdo_sqlite_stmt_set_columnt_count\n");
+
 	/* Columns not yet "described" */
 	if (!stmt->columns) {
 		stmt->column_count = new_count;
@@ -59,7 +63,7 @@ static void pdo_sqlite_stmt_set_column_count(pdo_stmt_t *stmt, int new_count)
 	}
 
 	/*
-	 * The column count has not changed : no need to reload columns description 
+	 * The column count has not changed : no need to reload columns description
 	 * Note: Do not handle attribute name change, without column count change
 	 */
 	if (new_count == stmt->column_count) {
@@ -83,6 +87,8 @@ static void pdo_sqlite_stmt_set_column_count(pdo_stmt_t *stmt, int new_count)
 
 static int pdo_sqlite_stmt_execute(pdo_stmt_t *stmt)
 {
+    fprintf(stderr, "pdo_sqlite_stmt_stmt_execute\n");
+
 	pdo_sqlite_stmt *S = (pdo_sqlite_stmt*)stmt->driver_data;
 
 	if (stmt->executed && !S->done) {
@@ -116,6 +122,8 @@ static int pdo_sqlite_stmt_execute(pdo_stmt_t *stmt)
 static int pdo_sqlite_stmt_param_hook(pdo_stmt_t *stmt, struct pdo_bound_param_data *param,
 		enum pdo_param_event event_type)
 {
+    fprintf(stderr, "pdo_sqlite_stmt_param_hook\n");
+
 	pdo_sqlite_stmt *S = (pdo_sqlite_stmt*)stmt->driver_data;
 	zval *parameter;
 
@@ -239,6 +247,8 @@ static int pdo_sqlite_stmt_param_hook(pdo_stmt_t *stmt, struct pdo_bound_param_d
 static int pdo_sqlite_stmt_fetch(pdo_stmt_t *stmt,
 	enum pdo_fetch_orientation ori, zend_long offset)
 {
+    fprintf(stderr, "pdo_sqlite_stmt_fetch\n");
+
 	pdo_sqlite_stmt *S = (pdo_sqlite_stmt*)stmt->driver_data;
 	int i;
 	if (!S->stmt) {
@@ -271,6 +281,8 @@ static int pdo_sqlite_stmt_fetch(pdo_stmt_t *stmt,
 
 static int pdo_sqlite_stmt_describe(pdo_stmt_t *stmt, int colno)
 {
+    fprintf(stderr, "pdo_sqlite_stmt_describe\n");
+
 	pdo_sqlite_stmt *S = (pdo_sqlite_stmt*)stmt->driver_data;
 	const char *str;
 
@@ -301,6 +313,8 @@ static int pdo_sqlite_stmt_describe(pdo_stmt_t *stmt, int colno)
 
 static int pdo_sqlite_stmt_get_col(pdo_stmt_t *stmt, int colno, char **ptr, zend_ulong *len, int *caller_frees)
 {
+    fprintf(stderr, "pdo_sqlite_stmt_get_col\n");
+
 	pdo_sqlite_stmt *S = (pdo_sqlite_stmt*)stmt->driver_data;
 	if (!S->stmt) {
 		return 0;
@@ -330,6 +344,8 @@ static int pdo_sqlite_stmt_get_col(pdo_stmt_t *stmt, int colno, char **ptr, zend
 
 static int pdo_sqlite_stmt_col_meta(pdo_stmt_t *stmt, zend_long colno, zval *return_value)
 {
+    fprintf(stderr, "pdo_sqlite_stmt_col_meta\n");
+
 	pdo_sqlite_stmt *S = (pdo_sqlite_stmt*)stmt->driver_data;
 	const char *str;
 	zval flags;
@@ -385,6 +401,8 @@ static int pdo_sqlite_stmt_col_meta(pdo_stmt_t *stmt, zend_long colno, zval *ret
 
 static int pdo_sqlite_stmt_cursor_closer(pdo_stmt_t *stmt)
 {
+    fprintf(stderr, "pdo_sqlite_stmt_cursor_closer\n");
+
 	pdo_sqlite_stmt *S = (pdo_sqlite_stmt*)stmt->driver_data;
 	sqlite3_reset(S->stmt);
 	return 1;

@@ -342,15 +342,6 @@ file_pipe2file(struct magic_set *ms, int fd, const void *startbuf,
 	int tfd;
 
 	(void)strlcpy(buf, "/tmp/file.XXXXXX", sizeof buf);
-#ifndef HAVE_MKSTEMP
-	{
-		char *ptr = mktemp(buf);
-		tfd = open(ptr, O_RDWR|O_TRUNC|O_EXCL|O_CREAT, 0600);
-		r = errno;
-		(void)unlink(ptr);
-		errno = r;
-	}
-#else
 	{
 		int te;
 		tfd = mkstemp(buf);
@@ -358,7 +349,7 @@ file_pipe2file(struct magic_set *ms, int fd, const void *startbuf,
 		(void)unlink(buf);
 		errno = te;
 	}
-#endif
+
 	if (tfd == -1) {
 		file_error(ms, errno,
 		    "cannot create temporary file for pipe copy");
