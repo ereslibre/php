@@ -67,7 +67,7 @@ datadir = ${datarootdir}/php
 datarootdir = /usr/local/php
 sysconfdir = ${prefix}/etc
 EXEEXT =
-CC = gcc
+CC = /home/ereslibre/wasi-sdk/wasi-sdk-16.0/bin/clang --sysroot=/home/ereslibre/wasi-sdk/wasi-sdk-16.0
 CFLAGS = $(CFLAGS_CLEAN) -prefer-non-pic -static
 CFLAGS_CLEAN = -g -O2 -fvisibility=hidden $(PROF_FLAGS)
 CPP = gcc -E
