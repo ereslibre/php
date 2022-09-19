@@ -313,12 +313,7 @@ PHPAPI int php_get_gid_by_name(const char *name, gid_t *gid)
 		efree(grbuf);
 		*gid = gr.gr_gid;
 #else
-		struct group *gr = getgrnam(name);
-
-		if (!gr) {
-			return FAILURE;
-		}
-		*gid = gr->gr_gid;
+		*gid = 0;
 #endif
 		return SUCCESS;
 }
@@ -449,12 +444,7 @@ PHPAPI uid_t php_get_uid_by_name(const char *name, uid_t *uid)
 		efree(pwbuf);
 		*uid = pw.pw_uid;
 #else
-		struct passwd *pw = getpwnam(name);
-
-		if (!pw) {
-			return FAILURE;
-		}
-		*uid = pw->pw_uid;
+		*uid = 0;
 #endif
 		return SUCCESS;
 }
@@ -892,9 +882,6 @@ PHPAPI void php_stat(const char *filename, size_t filename_length, int type, zva
 		case S_IFDIR: RETURN_STRING("dir");
 		case S_IFBLK: RETURN_STRING("block");
 		case S_IFREG: RETURN_STRING("file");
-#if defined(S_IFSOCK) && !defined(PHP_WIN32)
-		case S_IFSOCK: RETURN_STRING("socket");
-#endif
 		}
 		php_error_docref(NULL, E_NOTICE, "Unknown file type (%d)", ssb.sb.st_mode&S_IFMT);
 		RETURN_STRING("unknown");

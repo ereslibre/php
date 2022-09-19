@@ -329,20 +329,6 @@ static int php_sockop_set_option(php_stream *stream, int option, int value, void
 
 				if (sock->socket == -1) {
 					alive = 0;
-				} else if (php_pollfd_for(sock->socket, PHP_POLLREADABLE|POLLPRI, &tv) > 0) {
-#ifdef PHP_WIN32
-					int ret;
-#else
-					ssize_t ret;
-#endif
-					int err;
-
-					ret = recv(sock->socket, &buf, sizeof(buf), MSG_PEEK);
-					err = php_socket_errno();
-					if (0 == ret || /* the counterpart did properly shutdown*/
-						(0 > ret && err != EWOULDBLOCK && err != EAGAIN && err != EMSGSIZE)) { /* there was an unrecoverable error */
-						alive = 0;
-					}
 				}
 				return alive ? PHP_STREAM_OPTION_RETURN_OK : PHP_STREAM_OPTION_RETURN_ERR;
 			}
@@ -393,7 +379,6 @@ static int php_sockop_set_option(php_stream *stream, int option, int value, void
 				case STREAM_XPORT_OP_SEND:
 					flags = 0;
 					if ((xparam->inputs.flags & STREAM_OOB) == STREAM_OOB) {
-						flags |= MSG_OOB;
 					}
 					xparam->outputs.returncode = sock_sendto(sock,
 							xparam->inputs.buf, xparam->inputs.buflen,
@@ -411,7 +396,6 @@ static int php_sockop_set_option(php_stream *stream, int option, int value, void
 				case STREAM_XPORT_OP_RECV:
 					flags = 0;
 					if ((xparam->inputs.flags & STREAM_OOB) == STREAM_OOB) {
-						flags |= MSG_OOB;
 					}
 					if ((xparam->inputs.flags & STREAM_PEEK) == STREAM_PEEK) {
 						flags |= MSG_PEEK;
@@ -548,23 +532,6 @@ static inline int parse_unix_address(php_stream_xport_param *xparam, struct sock
 {
 	memset(unix_addr, 0, sizeof(*unix_addr));
 	unix_addr->sun_family = AF_UNIX;
-
-	/* we need to be binary safe on systems that support an abstract
-	 * namespace */
-	if (xparam->inputs.namelen >= sizeof(unix_addr->sun_path)) {
-		/* On linux, when the path begins with a NUL byte we are
-		 * referring to an abstract namespace.  In theory we should
-		 * allow an extra byte below, since we don't need the NULL.
-		 * BUT, to get into this branch of code, the name is too long,
-		 * so we don't care. */
-		xparam->inputs.namelen = sizeof(unix_addr->sun_path) - 1;
-		php_error_docref(NULL, E_NOTICE,
-			"socket path exceeded the maximum allowed length of %lu bytes "
-			"and was truncated", (unsigned long)sizeof(unix_addr->sun_path));
-	}
-
-	memcpy(unix_addr->sun_path, xparam->inputs.name, xparam->inputs.namelen);
-
 	return 1;
 }
 #endif
@@ -625,7 +592,7 @@ static inline int php_tcp_sockop_bind(php_stream *stream, php_netstream_data_t *
 	if (stream->ops == &php_stream_unix_socket_ops || stream->ops == &php_stream_unixdg_socket_ops) {
 		struct sockaddr_un unix_addr;
 
-		sock->socket = socket(PF_UNIX, stream->ops == &php_stream_unix_socket_ops ? SOCK_STREAM : SOCK_DGRAM, 0);
+		sock->socket = socket(AF_UNIX, stream->ops == &php_stream_unix_socket_ops ? SOCK_STREAM : SOCK_DGRAM, 0);
 
 		if (sock->socket == SOCK_ERR) {
 			if (xparam->want_errortext) {
@@ -638,8 +605,7 @@ static inline int php_tcp_sockop_bind(php_stream *stream, php_netstream_data_t *
 
 		parse_unix_address(xparam, &unix_addr);
 
-		return bind(sock->socket, (const struct sockaddr *)&unix_addr,
-			(socklen_t) XtOffsetOf(struct sockaddr_un, sun_path) + xparam->inputs.namelen);
+		return bind(sock->socket, (const struct sockaddr *)&unix_addr, xparam->inputs.namelen);
 	}
 #endif
 
@@ -706,7 +672,7 @@ static inline int php_tcp_sockop_connect(php_stream *stream, php_netstream_data_
 	if (stream->ops == &php_stream_unix_socket_ops || stream->ops == &php_stream_unixdg_socket_ops) {
 		struct sockaddr_un unix_addr;
 
-		sock->socket = socket(PF_UNIX, stream->ops == &php_stream_unix_socket_ops ? SOCK_STREAM : SOCK_DGRAM, 0);
+		sock->socket = socket(AF_UNIX, stream->ops == &php_stream_unix_socket_ops ? SOCK_STREAM : SOCK_DGRAM, 0);
 
 		if (sock->socket == SOCK_ERR) {
 			if (xparam->want_errortext) {
@@ -718,7 +684,7 @@ static inline int php_tcp_sockop_connect(php_stream *stream, php_netstream_data_
 		parse_unix_address(xparam, &unix_addr);
 
 		ret = php_network_connect_socket(sock->socket,
-				(const struct sockaddr *)&unix_addr, (socklen_t) XtOffsetOf(struct sockaddr_un, sun_path) + xparam->inputs.namelen,
+				(const struct sockaddr *)&unix_addr, xparam->inputs.namelen,
 				xparam->op == STREAM_XPORT_OP_CONNECT_ASYNC, xparam->inputs.timeout,
 				xparam->want_errortext ? &xparam->outputs.error_text : NULL,
 				&err);

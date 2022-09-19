@@ -55,7 +55,6 @@
 
 #ifndef PHP_WIN32
 #include <netinet/in.h>
-#include <netdb.h>
 #if HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
@@ -156,124 +155,7 @@ PHPAPI void php_network_freeaddresses(struct sockaddr **sal)
  */
 PHPAPI int php_network_getaddresses(const char *host, int socktype, struct sockaddr ***sal, zend_string **error_string)
 {
-	struct sockaddr **sap;
-	int n;
-#if HAVE_GETADDRINFO
-# if HAVE_IPV6
-	static int ipv6_borked = -1; /* the way this is used *is* thread safe */
-# endif
-	struct addrinfo hints, *res, *sai;
-#else
-	struct hostent *host_info;
-	struct in_addr in;
-#endif
-
-	if (host == NULL) {
-		return 0;
-	}
-#if HAVE_GETADDRINFO
-	memset(&hints, '\0', sizeof(hints));
-
-	hints.ai_family = AF_INET; /* default to regular inet (see below) */
-	hints.ai_socktype = socktype;
-
-# if HAVE_IPV6
-	/* probe for a working IPv6 stack; even if detected as having v6 at compile
-	 * time, at runtime some stacks are slow to resolve or have other issues
-	 * if they are not correctly configured.
-	 * static variable use is safe here since simple store or fetch operations
-	 * are atomic and because the actual probe process is not in danger of
-	 * collisions or race conditions. */
-	if (ipv6_borked == -1) {
-		int s;
-
-		s = socket(PF_INET6, SOCK_DGRAM, 0);
-		if (s == SOCK_ERR) {
-			ipv6_borked = 1;
-		} else {
-			ipv6_borked = 0;
-			closesocket(s);
-		}
-	}
-	hints.ai_family = ipv6_borked ? AF_INET : AF_UNSPEC;
-# endif
-
-	if ((n = getaddrinfo(host, NULL, &hints, &res))) {
-		if (error_string) {
-			/* free error string received during previous iteration (if any) */
-			if (*error_string) {
-				zend_string_release_ex(*error_string, 0);
-			}
-			*error_string = strpprintf(0, "php_network_getaddresses: getaddrinfo failed: %s", PHP_GAI_STRERROR(n));
-			php_error_docref(NULL, E_WARNING, "%s", ZSTR_VAL(*error_string));
-		} else {
-			php_error_docref(NULL, E_WARNING, "php_network_getaddresses: getaddrinfo failed: %s", PHP_GAI_STRERROR(n));
-		}
-		return 0;
-	} else if (res == NULL) {
-		if (error_string) {
-			/* free error string received during previous iteration (if any) */
-			if (*error_string) {
-				zend_string_release_ex(*error_string, 0);
-			}
-			*error_string = strpprintf(0, "php_network_getaddresses: getaddrinfo failed (null result pointer) errno=%d", errno);
-			php_error_docref(NULL, E_WARNING, "%s", ZSTR_VAL(*error_string));
-		} else {
-			php_error_docref(NULL, E_WARNING, "php_network_getaddresses: getaddrinfo failed (null result pointer)");
-		}
-		return 0;
-	}
-
-	sai = res;
-	for (n = 1; (sai = sai->ai_next) != NULL; n++)
-		;
-
-	*sal = safe_emalloc((n + 1), sizeof(*sal), 0);
-	sai = res;
-	sap = *sal;
-
-	do {
-		*sap = emalloc(sai->ai_addrlen);
-		memcpy(*sap, sai->ai_addr, sai->ai_addrlen);
-		sap++;
-	} while ((sai = sai->ai_next) != NULL);
-
-	freeaddrinfo(res);
-#else
-	if (!inet_aton(host, &in)) {
-		if(strlen(host) > MAXFQDNLEN) {
-			host_info = NULL;
-			errno = E2BIG;
-		} else {
-			host_info = php_network_gethostbyname(host);
-		}
-		if (host_info == NULL) {
-			if (error_string) {
-				/* free error string received during previous iteration (if any) */
-				if (*error_string) {
-					zend_string_release_ex(*error_string, 0);
-				}
-				*error_string = strpprintf(0, "php_network_getaddresses: gethostbyname failed. errno=%d", errno);
-				php_error_docref(NULL, E_WARNING, "%s", ZSTR_VAL(*error_string));
-			} else {
-				php_error_docref(NULL, E_WARNING, "php_network_getaddresses: gethostbyname failed");
-			}
-			return 0;
-		}
-		in = *((struct in_addr *) host_info->h_addr);
-	}
-
-	*sal = safe_emalloc(2, sizeof(*sal), 0);
-	sap = *sal;
-	*sap = emalloc(sizeof(struct sockaddr_in));
-	(*sap)->sa_family = AF_INET;
-	((struct sockaddr_in *)*sap)->sin_addr = in;
-	sap++;
-	n = 1;
-#endif
-
-	*sap = NULL;
-	return n;
+	return 0;
 }
 /* }}} */
 
@@ -355,19 +237,7 @@ PHPAPI int php_network_connect_socket(php_socket_t sockfd,
 		error = PHP_TIMEOUT_ERROR_VALUE;
 	}
 
-	if (n > 0) {
-		len = sizeof(error);
-		/*
-		   BSD-derived systems set errno correctly
-		   Solaris returns -1 from getsockopt in case of error
-		   */
-		if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (char*)&error, &len) != 0) {
-			ret = -1;
-		}
-	} else {
-		/* whoops: sockfd has disappeared */
-		ret = -1;
-	}
+        ret = -1;
 
 ok:
 	if (!asynchronous) {
@@ -648,18 +518,6 @@ PHPAPI void php_network_populate_name_from_sockaddr(
 #endif
 #ifdef AF_UNIX
 			case AF_UNIX:
-				{
-					struct sockaddr_un *ua = (struct sockaddr_un*)sa;
-
-					if (ua->sun_path[0] == '\0') {
-						/* abstract name */
-						int len = sl - sizeof(sa_family_t);
-						*textaddr = zend_string_init((char*)ua->sun_path, len, 0);
-					} else {
-						int len = strlen(ua->sun_path);
-						*textaddr = zend_string_init((char*)ua->sun_path, len, 0);
-					}
-				}
 				break;
 #endif
 
@@ -869,7 +727,6 @@ php_socket_t php_network_connect_socket_to_host(const char *host, unsigned short
 						php_error_docref(NULL, E_WARNING, "Invalid IP Address: %s", bindto);
 						goto skip_bind;
 					}
-					memset(&(in4->sin_zero), 0, sizeof(in4->sin_zero));
 				}
 #if HAVE_IPV6 && HAVE_INET_PTON
 				 else { /* IPV6 */

@@ -71,7 +71,6 @@ static int is_impersonate = 0;
 # include <netinet/in.h>
 # include <netinet/tcp.h>
 # include <arpa/inet.h>
-# include <netdb.h>
 # include <signal.h>
 
 # if defined(HAVE_POLL_H) && defined(HAVE_POLL)
@@ -433,17 +432,6 @@ static void fcgi_signal_handler(int signo)
 
 static void fcgi_setup_signals(void)
 {
-	struct sigaction new_sa, old_sa;
-
-	sigemptyset(&new_sa.sa_mask);
-	new_sa.sa_flags = 0;
-	new_sa.sa_handler = fcgi_signal_handler;
-	sigaction(SIGUSR1, &new_sa, NULL);
-	sigaction(SIGTERM, &new_sa, NULL);
-	sigaction(SIGPIPE, NULL, &old_sa);
-	if (old_sa.sa_handler == SIG_DFL) {
-		sigaction(SIGPIPE, &new_sa, NULL);
-	}
 }
 #endif
 
@@ -678,81 +666,6 @@ int fcgi_listen(const char *path, int backlog)
 			host[0] = '\0';
 			tcp = 1;
 		}
-	}
-
-	/* Prepare socket address */
-	if (tcp) {
-		memset(&sa.sa_inet, 0, sizeof(sa.sa_inet));
-		sa.sa_inet.sin_family = AF_INET;
-		sa.sa_inet.sin_port = htons(port);
-		sock_len = sizeof(sa.sa_inet);
-
-		if (!*host || !strncmp(host, "*", sizeof("*")-1)) {
-			sa.sa_inet.sin_addr.s_addr = htonl(INADDR_ANY);
-		} else {
-			sa.sa_inet.sin_addr.s_addr = inet_addr(host);
-			if (sa.sa_inet.sin_addr.s_addr == INADDR_NONE) {
-				struct hostent *hep;
-
-				if(strlen(host) > MAXFQDNLEN) {
-					hep = NULL;
-				} else {
-					hep = php_network_gethostbyname(host);
-				}
-				if (!hep || hep->h_addrtype != AF_INET || !hep->h_addr_list[0]) {
-					fcgi_log(FCGI_ERROR, "Cannot resolve host name '%s'!\n", host);
-					return -1;
-				} else if (hep->h_addr_list[1]) {
-					fcgi_log(FCGI_ERROR, "Host '%s' has multiple addresses. You must choose one explicitly!\n", host);
-					return -1;
-				}
-				sa.sa_inet.sin_addr.s_addr = ((struct in_addr*)hep->h_addr_list[0])->s_addr;
-			}
-		}
-	} else {
-#ifdef _WIN32
-		SECURITY_DESCRIPTOR  sd;
-		SECURITY_ATTRIBUTES  saw;
-		PACL                 acl;
-		HANDLE namedPipe;
-
-		memset(&sa, 0, sizeof(saw));
-		saw.nLength = sizeof(saw);
-		saw.bInheritHandle = FALSE;
-		acl = prepare_named_pipe_acl(&sd, &saw);
-
-		namedPipe = CreateNamedPipe(path,
-			PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
-			PIPE_TYPE_BYTE | PIPE_WAIT | PIPE_READMODE_BYTE,
-			PIPE_UNLIMITED_INSTANCES,
-			8192, 8192, 0, &saw);
-		if (namedPipe == INVALID_HANDLE_VALUE) {
-			return -1;
-		}
-		listen_socket = _open_osfhandle((intptr_t)namedPipe, 0);
-		if (!is_initialized) {
-			fcgi_init();
-		}
-		is_fastcgi = 1;
-		return listen_socket;
-
-#else
-		size_t path_len = strlen(path);
-
-		if (path_len >= sizeof(sa.sa_unix.sun_path)) {
-			fcgi_log(FCGI_ERROR, "Listening socket's path name is too long.\n");
-			return -1;
-		}
-
-		memset(&sa.sa_unix, 0, sizeof(sa.sa_unix));
-		sa.sa_unix.sun_family = AF_UNIX;
-		memcpy(sa.sa_unix.sun_path, path, path_len + 1);
-		sock_len = (size_t)(((struct sockaddr_un *)0)->sun_path)	+ path_len;
-#ifdef HAVE_SOCKADDR_UN_SUN_LEN
-		sa.sa_unix.sun_len = sock_len;
-#endif
-		unlink(path);
-#endif
 	}
 
 	/* Create, bind socket and start listen on it */

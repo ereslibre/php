@@ -98,11 +98,6 @@ int __riscosify_control = __RISCOSIFY_STRICT_UNIX_SPECS;
 # include "valgrind/callgrind.h"
 #endif
 
-#ifndef PHP_WIN32
-/* XXX this will need to change later when threaded fastcgi is implemented.  shane */
-struct sigaction act, old_term, old_quit, old_int;
-#endif
-
 static void (*php_php_import_environment_variables)(zval *array_ptr);
 
 /* these globals used for forking children on unix systems */
@@ -1478,20 +1473,7 @@ static void init_request_info(fcgi_request *request)
  */
 void fastcgi_cleanup(int signal)
 {
-#ifdef DEBUG_FASTCGI
-	fprintf(stderr, "FastCGI shutdown, pid %d\n", getpid());
-#endif
-
-	sigaction(SIGTERM, &old_term, 0);
-
-	/* Kill all the processes in our process group */
-	kill(-pgroup, SIGTERM);
-
-	if (parent && parent_waiting) {
-		exit_signal = 1;
-	} else {
-		exit(0);
-	}
+    exit(0);
 }
 #else
 BOOL WINAPI fastcgi_cleanup(DWORD sig)
@@ -2054,17 +2036,6 @@ consult the installation file that came with this distribution, or visit \n\
 			fprintf(stderr, "Process group %d\n", pgroup);
 #endif
 
-			/* Set up handler to kill children upon exit */
-			act.sa_flags = 0;
-			act.sa_handler = fastcgi_cleanup;
-			if (sigaction(SIGTERM, &act, &old_term) ||
-				sigaction(SIGINT,  &act, &old_int)  ||
-				sigaction(SIGQUIT, &act, &old_quit)
-			) {
-				perror("Can't set signals");
-				exit(1);
-			}
-
 			if (fcgi_in_shutdown()) {
 				goto parent_out;
 			}
@@ -2083,12 +2054,7 @@ consult the installation file that came with this distribution, or visit \n\
 						 */
 						parent = 0;
 
-						/* don't catch our signals */
-						sigaction(SIGTERM, &old_term, 0);
-						sigaction(SIGQUIT, &old_quit, 0);
-						sigaction(SIGINT,  &old_int,  0);
-						zend_signal_init();
-						break;
+                        break;
 					case -1:
 						perror("php (pre-forking)");
 						exit(1);

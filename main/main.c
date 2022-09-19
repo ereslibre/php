@@ -1497,8 +1497,6 @@ PHPAPI char *php_get_current_user(void)
 			return "";
 		}
 #endif
-		SG(request_info).current_user_length = strlen(pwd->pw_name);
-		SG(request_info).current_user = estrndup(pwd->pw_name, SG(request_info).current_user_length);
 #if defined(ZTS) && defined(HAVE_GETPWUID_R) && defined(_SC_GETPW_R_SIZE_MAX)
 		efree(pwbuf);
 #endif

@@ -32,7 +32,6 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h>
 #if HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif

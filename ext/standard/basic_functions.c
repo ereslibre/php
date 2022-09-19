@@ -61,9 +61,7 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 #include <sys/stat.h>
 #endif
 
-#ifndef PHP_WIN32
-# include <netdb.h>
-#else
+#ifdef PHP_WIN32
 #include "win32/inet.h"
 #endif
 

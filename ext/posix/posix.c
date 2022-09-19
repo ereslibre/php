@@ -45,8 +45,6 @@
 #include <signal.h>
 #include <sys/times.h>
 #include <errno.h>
-#include <grp.h>
-#include <pwd.h>
 #if HAVE_SYS_MKDEV_H
 # include <sys/mkdev.h>
 #endif
@@ -983,26 +981,7 @@ int php_posix_group_to_array(struct group *g, zval *array_group) /* {{{ */
 	zval array_members;
 	int count;
 
-	if (NULL == g)
-		return 0;
-
-	if (array_group == NULL || Z_TYPE_P(array_group) != IS_ARRAY)
-		return 0;
-
-	array_init(&array_members);
-
-	add_assoc_string(array_group, "name", g->gr_name);
-	if (g->gr_passwd) {
-		add_assoc_string(array_group, "passwd", g->gr_passwd);
-	} else {
-		add_assoc_null(array_group, "passwd");
-	}
-	for (count = 0; g->gr_mem[count] != NULL; count++) {
-		add_next_index_string(&array_members, g->gr_mem[count]);
-	}
-	zend_hash_str_update(Z_ARRVAL_P(array_group), "members", sizeof("members")-1, &array_members);
-	add_assoc_long(array_group, "gid", g->gr_gid);
-	return 1;
+    return 0;
 }
 /* }}} */
 
@@ -1174,19 +1153,7 @@ try_again:
 
 int php_posix_passwd_to_array(struct passwd *pw, zval *return_value) /* {{{ */
 {
-	if (NULL == pw)
-		return 0;
-	if (NULL == return_value || Z_TYPE_P(return_value) != IS_ARRAY)
-		return 0;
-
-	add_assoc_string(return_value, "name",      pw->pw_name);
-	add_assoc_string(return_value, "passwd",    pw->pw_passwd);
-	add_assoc_long  (return_value, "uid",       pw->pw_uid);
-	add_assoc_long  (return_value, "gid",		pw->pw_gid);
-	add_assoc_string(return_value, "gecos",     pw->pw_gecos);
-	add_assoc_string(return_value, "dir",       pw->pw_dir);
-	add_assoc_string(return_value, "shell",     pw->pw_shell);
-	return 1;
+    return 0;
 }
 /* }}} */
 
