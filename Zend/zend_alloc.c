@@ -713,7 +713,6 @@ static void *zend_mm_chunk_alloc_int(size_t size, size_t alignment)
 	} else if (ZEND_MM_ALIGNED_OFFSET(ptr, alignment) == 0) {
 #ifdef MADV_HUGEPAGE
 		if (zend_mm_use_huge_pages) {
-			madvise(ptr, size, MADV_HUGEPAGE);
 		}
 #endif
 		return ptr;
@@ -746,7 +745,6 @@ static void *zend_mm_chunk_alloc_int(size_t size, size_t alignment)
 		}
 # ifdef MADV_HUGEPAGE
 		if (zend_mm_use_huge_pages) {
-			madvise(ptr, size, MADV_HUGEPAGE);
 		}
 # endif
 #endif

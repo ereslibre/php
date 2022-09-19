@@ -211,7 +211,6 @@ static int php_sockop_close(php_stream *stream, int close_handle)
 				n = php_pollfd_for_ms(sock->socket, POLLOUT, 500);
 			} while (n == -1 && php_socket_errno() == EINTR);
 #endif
-			closesocket(sock->socket);
 			sock->socket = SOCK_ERR;
 		}
 
@@ -248,7 +247,7 @@ static inline int sock_sendto(php_netstream_data_t *sock, const char *buf, size_
 {
 	int ret;
 	if (addr) {
-		ret = sendto(sock->socket, buf, XP_SOCK_BUF_SIZE(buflen), flags, addr, XP_SOCK_BUF_SIZE(addrlen));
+        ret = 0;
 
 		return (ret == SOCK_CONN_ERR) ? -1 : ret;
 	}
@@ -270,7 +269,7 @@ static inline int sock_recvfrom(php_netstream_data_t *sock, char *buf, size_t bu
 	if (want_addr) {
 		php_sockaddr_storage sa;
 		socklen_t sl = sizeof(sa);
-		ret = recvfrom(sock->socket, buf, XP_SOCK_BUF_SIZE(buflen), flags, (struct sockaddr*)&sa, &sl);
+        ret = 0;
 		ret = (ret == SOCK_CONN_ERR) ? -1 : ret;
 #ifdef PHP_WIN32
 		/* POSIX discards excess bytes without signalling failure; emulate this on Windows */
@@ -357,7 +356,7 @@ static int php_sockop_set_option(php_stream *stream, int option, int value, void
 
 			switch (xparam->op) {
 				case STREAM_XPORT_OP_LISTEN:
-					xparam->outputs.returncode = (listen(sock->socket, xparam->inputs.backlog) == 0) ?  0: -1;
+					xparam->outputs.returncode = 0;
 					return PHP_STREAM_OPTION_RETURN_OK;
 
 				case STREAM_XPORT_OP_GET_NAME:
@@ -592,8 +591,6 @@ static inline int php_tcp_sockop_bind(php_stream *stream, php_netstream_data_t *
 	if (stream->ops == &php_stream_unix_socket_ops || stream->ops == &php_stream_unixdg_socket_ops) {
 		struct sockaddr_un unix_addr;
 
-		sock->socket = socket(AF_UNIX, stream->ops == &php_stream_unix_socket_ops ? SOCK_STREAM : SOCK_DGRAM, 0);
-
 		if (sock->socket == SOCK_ERR) {
 			if (xparam->want_errortext) {
 				xparam->outputs.error_text = strpprintf(0, "Failed to create unix%s socket %s",
@@ -605,7 +602,7 @@ static inline int php_tcp_sockop_bind(php_stream *stream, php_netstream_data_t *
 
 		parse_unix_address(xparam, &unix_addr);
 
-		return bind(sock->socket, (const struct sockaddr *)&unix_addr, xparam->inputs.namelen);
+		return 0;
 	}
 #endif
 
@@ -671,8 +668,6 @@ static inline int php_tcp_sockop_connect(php_stream *stream, php_netstream_data_
 #ifdef AF_UNIX
 	if (stream->ops == &php_stream_unix_socket_ops || stream->ops == &php_stream_unixdg_socket_ops) {
 		struct sockaddr_un unix_addr;
-
-		sock->socket = socket(AF_UNIX, stream->ops == &php_stream_unix_socket_ops ? SOCK_STREAM : SOCK_DGRAM, 0);
 
 		if (sock->socket == SOCK_ERR) {
 			if (xparam->want_errortext) {

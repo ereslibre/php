@@ -2030,8 +2030,7 @@ consult the installation file that came with this distribution, or visit \n\
 			pid_t pid;
 
 			/* Create a process group for ourself & children */
-			setsid();
-			pgroup = getpgrp();
+			pgroup = 0;
 #ifdef DEBUG_FASTCGI
 			fprintf(stderr, "Process group %d\n", pgroup);
 #endif
@@ -2045,7 +2044,7 @@ consult the installation file that came with this distribution, or visit \n\
 #ifdef DEBUG_FASTCGI
 					fprintf(stderr, "Forking, %d running\n", running);
 #endif
-					pid = fork();
+					pid = 1;
 					switch (pid) {
 					case 0:
 						/* One of the children.
@@ -2072,19 +2071,10 @@ consult the installation file that came with this distribution, or visit \n\
 #endif
 					parent_waiting = 1;
 					while (1) {
-						if (wait(&status) >= 0) {
-							running--;
-							break;
-						} else if (exit_signal) {
-							break;
-						}
 					}
 					if (exit_signal) {
 #if 0
 						while (running > 0) {
-							while (wait(&status) < 0) {
-							}
-							running--;
 						}
 #endif
 						goto parent_out;

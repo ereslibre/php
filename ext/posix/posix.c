@@ -455,18 +455,6 @@ ZEND_GET_MODULE(posix)
 
 PHP_FUNCTION(posix_kill)
 {
-	zend_long pid, sig;
-
-	ZEND_PARSE_PARAMETERS_START(2, 2)
-		Z_PARAM_LONG(pid)
-		Z_PARAM_LONG(sig)
-	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
-
-	if (kill(pid, sig) < 0) {
-		POSIX_G(last_error) = errno;
-		RETURN_FALSE;
-  	}
-
 	RETURN_TRUE;
 }
 /* }}} */
@@ -483,7 +471,7 @@ PHP_FUNCTION(posix_getpid)
    Get the parent process id (POSIX.1, 4.1.1) */
 PHP_FUNCTION(posix_getppid)
 {
-	PHP_POSIX_RETURN_LONG_FUNC(getppid);
+    RETURN_LONG(1);
 }
 /* }}} */
 
@@ -491,7 +479,7 @@ PHP_FUNCTION(posix_getppid)
    Get the current user id (POSIX.1, 4.2.1) */
 PHP_FUNCTION(posix_getuid)
 {
-	PHP_POSIX_RETURN_LONG_FUNC(getuid);
+    RETURN_LONG(0);
 }
 /* }}} */
 
@@ -499,7 +487,7 @@ PHP_FUNCTION(posix_getuid)
    Get the current group id (POSIX.1, 4.2.1) */
 PHP_FUNCTION(posix_getgid)
 {
-	PHP_POSIX_RETURN_LONG_FUNC(getgid);
+    RETURN_LONG(0);
 }
 /* }}} */
 
@@ -507,7 +495,7 @@ PHP_FUNCTION(posix_getgid)
    Get the current effective user id (POSIX.1, 4.2.1) */
 PHP_FUNCTION(posix_geteuid)
 {
-	PHP_POSIX_RETURN_LONG_FUNC(geteuid);
+    RETURN_LONG(0);
 }
 /* }}} */
 
@@ -515,7 +503,7 @@ PHP_FUNCTION(posix_geteuid)
    Get the current effective group id (POSIX.1, 4.2.1) */
 PHP_FUNCTION(posix_getegid)
 {
-	PHP_POSIX_RETURN_LONG_FUNC(getegid);
+    RETURN_LONG(0);
 }
 /* }}} */
 
@@ -523,7 +511,7 @@ PHP_FUNCTION(posix_getegid)
    Set user id (POSIX.1, 4.2.2) */
 PHP_FUNCTION(posix_setuid)
 {
-	PHP_POSIX_SINGLE_ARG_FUNC(setuid);
+	RETURN_LONG(0);
 }
 /* }}} */
 
@@ -531,7 +519,7 @@ PHP_FUNCTION(posix_setuid)
    Set group id (POSIX.1, 4.2.2) */
 PHP_FUNCTION(posix_setgid)
 {
-	PHP_POSIX_SINGLE_ARG_FUNC(setgid);
+    RETURN_LONG(0);
 }
 /* }}} */
 
@@ -540,7 +528,7 @@ PHP_FUNCTION(posix_setgid)
 #ifdef HAVE_SETEUID
 PHP_FUNCTION(posix_seteuid)
 {
-	PHP_POSIX_SINGLE_ARG_FUNC(seteuid);
+    RETURN_LONG(0);
 }
 #endif
 /* }}} */
@@ -550,7 +538,7 @@ PHP_FUNCTION(posix_seteuid)
 #ifdef HAVE_SETEGID
 PHP_FUNCTION(posix_setegid)
 {
-	PHP_POSIX_SINGLE_ARG_FUNC(setegid);
+    RETURN_LONG(0);
 }
 #endif
 /* }}} */
@@ -603,7 +591,7 @@ PHP_FUNCTION(posix_getlogin)
    Get current process group id (POSIX.1, 4.3.1) */
 PHP_FUNCTION(posix_getpgrp)
 {
-	PHP_POSIX_RETURN_LONG_FUNC(getpgrp);
+    RETURN_LONG(0);
 }
 /* }}} */
 
@@ -621,18 +609,6 @@ PHP_FUNCTION(posix_setsid)
    Set process group id for job control (POSIX.1, 4.3.3) */
 PHP_FUNCTION(posix_setpgid)
 {
-	zend_long pid, pgid;
-
-	ZEND_PARSE_PARAMETERS_START(2, 2)
-		Z_PARAM_LONG(pid)
-		Z_PARAM_LONG(pgid)
-	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
-
-	if (setpgid(pid, pgid) < 0) {
-		POSIX_G(last_error) = errno;
-		RETURN_FALSE;
-	}
-
 	RETURN_TRUE;
 }
 /* }}} */
@@ -806,26 +782,7 @@ PHP_FUNCTION(posix_ttyname)
 		default:
 			fd = zval_get_long(z_fd);
 	}
-#if defined(ZTS) && defined(HAVE_TTYNAME_R) && defined(_SC_TTY_NAME_MAX)
-	buflen = sysconf(_SC_TTY_NAME_MAX);
-	if (buflen < 1) {
-		RETURN_FALSE;
-	}
-	p = emalloc(buflen);
 
-	if (ttyname_r(fd, p, buflen)) {
-		POSIX_G(last_error) = errno;
-		efree(p);
-		RETURN_FALSE;
-	}
-	RETURN_STRING(p);
-	efree(p);
-#else
-	if (NULL == (p = ttyname(fd))) {
-		POSIX_G(last_error) = errno;
-		RETURN_FALSE;
-	}
-#endif
 	RETURN_STRING(p);
 }
 /* }}} */
@@ -1041,54 +998,7 @@ PHP_FUNCTION(posix_access)
    Group database access (POSIX.1, 9.2.1) */
 PHP_FUNCTION(posix_getgrnam)
 {
-	char *name;
-	struct group *g;
-	size_t name_len;
-#if defined(ZTS) && defined(HAVE_GETGRNAM_R) && defined(_SC_GETGR_R_SIZE_MAX)
-	struct group gbuf;
-	long buflen;
-	char *buf;
-#endif
-
-	ZEND_PARSE_PARAMETERS_START(1, 1)
-		Z_PARAM_STRING(name, name_len)
-	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
-
-#if defined(ZTS) && defined(HAVE_GETGRNAM_R) && defined(_SC_GETGR_R_SIZE_MAX)
-	buflen = sysconf(_SC_GETGR_R_SIZE_MAX);
-	if (buflen < 1) {
-		RETURN_FALSE;
-	}
-	buf = emalloc(buflen);
-try_again:
-	g = &gbuf;
-
-	if (getgrnam_r(name, g, buf, buflen, &g) || g == NULL) {
-		if (errno == ERANGE) {
-			buflen *= 2;
-			buf = erealloc(buf, buflen);
-			goto try_again;
-		}
-		POSIX_G(last_error) = errno;
-		efree(buf);
-		RETURN_FALSE;
-	}
-#else
-	if (NULL == (g = getgrnam(name))) {
-		POSIX_G(last_error) = errno;
-		RETURN_FALSE;
-	}
-#endif
-	array_init(return_value);
-
-	if (!php_posix_group_to_array(g, return_value)) {
-		zend_array_destroy(Z_ARR_P(return_value));
-		php_error_docref(NULL, E_WARNING, "unable to convert posix group to array");
-		RETVAL_FALSE;
-	}
-#if defined(ZTS) && defined(HAVE_GETGRNAM_R) && defined(_SC_GETGR_R_SIZE_MAX)
-	efree(buf);
-#endif
+    RETURN_FALSE;
 }
 /* }}} */
 
@@ -1096,58 +1006,7 @@ try_again:
    Group database access (POSIX.1, 9.2.1) */
 PHP_FUNCTION(posix_getgrgid)
 {
-	zend_long gid;
-#if defined(ZTS) && defined(HAVE_GETGRGID_R) && defined(_SC_GETGR_R_SIZE_MAX)
-	int ret;
-	struct group _g;
-	struct group *retgrptr = NULL;
-	long grbuflen;
-	char *grbuf;
-#endif
-	struct group *g;
-
-	ZEND_PARSE_PARAMETERS_START(1, 1)
-		Z_PARAM_LONG(gid)
-	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
-
-#if defined(ZTS) && defined(HAVE_GETGRGID_R) && defined(_SC_GETGR_R_SIZE_MAX)
-
-	grbuflen = sysconf(_SC_GETGR_R_SIZE_MAX);
-	if (grbuflen < 1) {
-		RETURN_FALSE;
-	}
-
-	grbuf = emalloc(grbuflen);
-
-try_again:
-	ret = getgrgid_r(gid, &_g, grbuf, grbuflen, &retgrptr);
-	if (ret || retgrptr == NULL) {
-		if (errno == ERANGE) {
-			grbuflen *= 2;
-			grbuf = erealloc(grbuf, grbuflen);
-			goto try_again;
-		}
-		POSIX_G(last_error) = ret;
-		efree(grbuf);
-		RETURN_FALSE;
-	}
-	g = &_g;
-#else
-	if (NULL == (g = getgrgid(gid))) {
-		POSIX_G(last_error) = errno;
-		RETURN_FALSE;
-	}
-#endif
-	array_init(return_value);
-
-	if (!php_posix_group_to_array(g, return_value)) {
-		zend_array_destroy(Z_ARR_P(return_value));
-		php_error_docref(NULL, E_WARNING, "unable to convert posix group struct to array");
-		RETVAL_FALSE;
-	}
-#if defined(ZTS) && defined(HAVE_GETGRGID_R) && defined(_SC_GETGR_R_SIZE_MAX)
-	efree(grbuf);
-#endif
+    RETURN_FALSE;
 }
 /* }}} */
 
@@ -1161,54 +1020,7 @@ int php_posix_passwd_to_array(struct passwd *pw, zval *return_value) /* {{{ */
    User database access (POSIX.1, 9.2.2) */
 PHP_FUNCTION(posix_getpwnam)
 {
-	struct passwd *pw;
-	char *name;
-	size_t name_len;
-#if defined(ZTS) && defined(_SC_GETPW_R_SIZE_MAX) && defined(HAVE_GETPWNAM_R)
-	struct passwd pwbuf;
-	long buflen;
-	char *buf;
-#endif
-
-	ZEND_PARSE_PARAMETERS_START(1, 1)
-		Z_PARAM_STRING(name, name_len)
-	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
-
-#if defined(ZTS) && defined(_SC_GETPW_R_SIZE_MAX) && defined(HAVE_GETPWNAM_R)
-	buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (buflen < 1) {
-		RETURN_FALSE;
-	}
-	buf = emalloc(buflen);
-	pw = &pwbuf;
-
-try_again:
-	if (getpwnam_r(name, pw, buf, buflen, &pw) || pw == NULL) {
-		if (errno == ERANGE) {
-			buflen *= 2;
-			buf = erealloc(buf, buflen);
-			goto try_again;
-		}
-		efree(buf);
-		POSIX_G(last_error) = errno;
-		RETURN_FALSE;
-	}
-#else
-	if (NULL == (pw = getpwnam(name))) {
-		POSIX_G(last_error) = errno;
-		RETURN_FALSE;
-	}
-#endif
-	array_init(return_value);
-
-	if (!php_posix_passwd_to_array(pw, return_value)) {
-		zend_array_destroy(Z_ARR_P(return_value));
-		php_error_docref(NULL, E_WARNING, "unable to convert posix passwd struct to array");
-		RETVAL_FALSE;
-	}
-#if defined(ZTS) && defined(_SC_GETPW_R_SIZE_MAX) && defined(HAVE_GETPWNAM_R)
-	efree(buf);
-#endif
+    RETURN_FALSE;
 }
 /* }}} */
 
@@ -1216,56 +1028,7 @@ try_again:
    User database access (POSIX.1, 9.2.2) */
 PHP_FUNCTION(posix_getpwuid)
 {
-	zend_long uid;
-#if defined(ZTS) && defined(_SC_GETPW_R_SIZE_MAX) && defined(HAVE_GETPWUID_R)
-	struct passwd _pw;
-	struct passwd *retpwptr = NULL;
-	long pwbuflen;
-	char *pwbuf;
-	int ret;
-#endif
-	struct passwd *pw;
-
-	ZEND_PARSE_PARAMETERS_START(1, 1)
-		Z_PARAM_LONG(uid)
-	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
-
-#if defined(ZTS) && defined(_SC_GETPW_R_SIZE_MAX) && defined(HAVE_GETPWUID_R)
-	pwbuflen = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (pwbuflen < 1) {
-		RETURN_FALSE;
-	}
-	pwbuf = emalloc(pwbuflen);
-
-try_again:
-	ret = getpwuid_r(uid, &_pw, pwbuf, pwbuflen, &retpwptr);
-	if (ret || retpwptr == NULL) {
-		if (errno == ERANGE) {
-			pwbuflen *= 2;
-			pwbuf = erealloc(pwbuf, pwbuflen);
-			goto try_again;
-		}
-		POSIX_G(last_error) = ret;
-		efree(pwbuf);
-		RETURN_FALSE;
-	}
-	pw = &_pw;
-#else
-	if (NULL == (pw = getpwuid(uid))) {
-		POSIX_G(last_error) = errno;
-		RETURN_FALSE;
-	}
-#endif
-	array_init(return_value);
-
-	if (!php_posix_passwd_to_array(pw, return_value)) {
-		zend_array_destroy(Z_ARR_P(return_value));
-		php_error_docref(NULL, E_WARNING, "unable to convert posix passwd struct to array");
-		RETVAL_FALSE;
-	}
-#if defined(ZTS) && defined(_SC_GETPW_R_SIZE_MAX) && defined(HAVE_GETPWUID_R)
-	efree(pwbuf);
-#endif
+    RETURN_FALSE;
 }
 /* }}} */
 

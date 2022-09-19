@@ -98,13 +98,7 @@ static int php_do_open_temporary_file(const char *path, const char *pfx, zend_st
 	char cwd[MAXPATHLEN];
 	cwd_state new_state;
 	int fd = -1;
-#ifndef HAVE_MKSTEMP
-	int open_flags = O_CREAT | O_TRUNC | O_RDWR
-#ifdef PHP_WIN32
-		| _O_BINARY
-#endif
-		;
-#endif
+	int open_flags = O_CREAT | O_TRUNC | O_RDWR;
 
 	if (!path || !path[0]) {
 		return -1;
@@ -179,9 +173,7 @@ static int php_do_open_temporary_file(const char *path, const char *pfx, zend_st
 #elif defined(HAVE_MKSTEMP)
 	fd = mkstemp(opened_path);
 #else
-	if (mktemp(opened_path)) {
-		fd = VCWD_OPEN(opened_path, open_flags);
-	}
+    fd = VCWD_OPEN(opened_path, open_flags);
 #endif
 
 #ifdef PHP_WIN32

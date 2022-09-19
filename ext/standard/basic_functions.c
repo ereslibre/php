@@ -3844,10 +3844,6 @@ PHP_RSHUTDOWN_FUNCTION(basic) /* {{{ */
 
 	BG(mt_rand_is_seeded) = 0;
 
-	if (BG(umask) != -1) {
-		umask(BG(umask));
-	}
-
 	/* Check if locale was changed and change it back
 	 * to the value in startup environment */
 	if (BG(locale_changed)) {
@@ -5942,16 +5938,6 @@ PHP_FUNCTION(move_uploaded_file)
 
 	if (VCWD_RENAME(path, new_path) == 0) {
 		successful = 1;
-#ifndef PHP_WIN32
-		oldmask = umask(077);
-		umask(oldmask);
-
-		ret = VCWD_CHMOD(new_path, 0666 & ~oldmask);
-
-		if (ret == -1) {
-			php_error_docref(NULL, E_WARNING, "%s", strerror(errno));
-		}
-#endif
 	} else if (php_copy_file_ex(path, new_path, STREAM_DISABLE_OPEN_BASEDIR) == SUCCESS) {
 		VCWD_UNLINK(path);
 		successful = 1;

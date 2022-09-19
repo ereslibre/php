@@ -523,12 +523,7 @@ int fcgi_init(void)
 		}
 #else
 		errno = 0;
-		if (getpeername(0, (struct sockaddr *)&sa, &len) != 0 && errno == ENOTCONN) {
-			fcgi_setup_signals();
-			return is_fastcgi = 1;
-		} else {
-			return is_fastcgi = 0;
-		}
+        return is_fastcgi = 0;
 #endif
 	}
 	return is_fastcgi;
@@ -668,21 +663,7 @@ int fcgi_listen(const char *path, int backlog)
 		}
 	}
 
-	/* Create, bind socket and start listen on it */
-	if ((listen_socket = socket(sa.sa.sa_family, SOCK_STREAM, 0)) < 0 ||
-#ifdef SO_REUSEADDR
-	    setsockopt(listen_socket, SOL_SOCKET, SO_REUSEADDR, (char*)&reuse, sizeof(reuse)) < 0 ||
-#endif
-	    bind(listen_socket, (struct sockaddr *) &sa, sock_len) < 0 ||
-	    listen(listen_socket, backlog) < 0) {
-		close(listen_socket);
-		fcgi_log(FCGI_ERROR, "Cannot bind/listen socket - [%d] %s.\n",errno, strerror(errno));
-		return -1;
-	}
-
-	if (!tcp) {
-		chmod(path, 0777);
-	} else {
+	if (tcp) {
 		char *ip = getenv("FCGI_WEB_SERVER_ADDRS");
 		char *cur, *end;
 		int n;
@@ -1015,7 +996,6 @@ static int fcgi_read_request(fcgi_request *req)
 			int on = 1;
 # endif
 
-			setsockopt(req->fd, IPPROTO_TCP, TCP_NODELAY, (char*)&on, sizeof(on));
 			req->nodelay = 1;
 		}
 #endif
@@ -1209,7 +1189,6 @@ void fcgi_close(fcgi_request *req, int force, int destroy)
 				/* read any remaining data, it may be omitted */
 				while (recv(req->fd, buf, sizeof(buf), 0) > 0) {}
 			}
-			closesocket(req->fd);
 		}
 #else
 		if (!force) {
@@ -1325,7 +1304,6 @@ int fcgi_accept_request(fcgi_request *req)
 					client_sa = sa;
 					if (req->fd >= 0 && !fcgi_is_allowed()) {
 						fcgi_log(FCGI_ERROR, "Connection disallowed: IP address '%s' has been dropped.", fcgi_get_last_client_ip());
-						closesocket(req->fd);
 						req->fd = -1;
 						continue;
 					}
