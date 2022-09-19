@@ -67,7 +67,7 @@ datadir = ${datarootdir}/php
 datarootdir = /usr/local/php
 sysconfdir = ${prefix}/etc
 EXEEXT =
-CC = /php/wasi-sdk-16.0/bin/clang --sysroot=/php/wasi-sysroot -D_WASI_EMULATED_MMAN=1 -D_WASI_EMULATED_SIGNAL=1 -D_WASI_EMULATED_PROCESS_CLOCKS=1 -D_WASI_EMULATED_GETPID=1 -D_POSIX_SOURCE=1 -D_GNU_SOURCE=1 -DHAVE_FORK=0
+CC = /php/wasi-sdk-16.0/bin/clang --sysroot=/php/wasi-sysroot -D_WASI_EMULATED_MMAN=1 -D_WASI_EMULATED_SIGNAL=1 -D_WASI_EMULATED_PROCESS_CLOCKS=1 -D_WASI_EMULATED_GETPID=1 -D_POSIX_SOURCE=1 -D_GNU_SOURCE=1 -DHAVE_FORK=0 -DSQLITE_OMIT_LOAD_EXTENSION=1
 CFLAGS = $(CFLAGS_CLEAN) -prefer-non-pic -static
 CFLAGS_CLEAN = -g -O2 -fvisibility=hidden $(PROF_FLAGS)
 CPP = /php/wasi-sdk-16.0/bin/clang --sysroot=/php/wasi-sysroot -E
