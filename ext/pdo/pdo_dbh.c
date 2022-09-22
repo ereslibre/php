@@ -508,11 +508,6 @@ static int i = 0;
    Prepares a statement for execution and returns a statement object */
 static PHP_METHOD(PDO, prepare)
 {
-    printf("PDO::prepare (%d)\n", i);
-
-    if (i == 1) { exit(1); }
-    i += 1;
-
 	pdo_stmt_t *stmt;
 	char *statement;
 	size_t statement_len;
@@ -529,6 +524,9 @@ static PHP_METHOD(PDO, prepare)
 
 	PDO_DBH_CLEAR_ERR();
 	PDO_CONSTRUCT_CHECK;
+
+    printf("PDO::prepare (%d) -- %s\n", i, statement);
+    i += 1;
 
 	if (ZEND_NUM_ARGS() > 1 && (opt = zend_hash_index_find(Z_ARRVAL_P(options), PDO_ATTR_STATEMENT_CLASS)) != NULL) {
 		if (Z_TYPE_P(opt) != IS_ARRAY || (item = zend_hash_index_find(Z_ARRVAL_P(opt), 0)) == NULL
@@ -959,6 +957,8 @@ static PHP_METHOD(PDO, getAttribute)
    Execute a query that does not return a row set, returning the number of affected rows */
 static PHP_METHOD(PDO, exec)
 {
+    printf("PDO::exec\n");
+
 	pdo_dbh_t *dbh = Z_PDO_DBH_P(getThis());
 	char *statement;
 	size_t statement_len;
@@ -1117,6 +1117,8 @@ static PHP_METHOD(PDO, query)
 
 	PDO_DBH_CLEAR_ERR();
 	PDO_CONSTRUCT_CHECK;
+
+    printf("PDO::query (%s)\n", statement);
 
 	if (!pdo_stmt_instantiate(dbh, return_value, dbh->def_stmt_ce, &dbh->def_stmt_ctor_args)) {
 		if (EXPECTED(!EG(exception))) {
