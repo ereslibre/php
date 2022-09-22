@@ -481,10 +481,38 @@ static void pdo_stmt_construct(zend_execute_data *execute_data, pdo_stmt_t *stmt
 }
 /* }}} */
 
+static PHP_METHOD(PDO, prepare2)
+{
+	pdo_stmt_t *stmt;
+	char *statement;
+	size_t statement_len;
+	zval *options = NULL, *opt, *item, ctor_args;
+	zend_class_entry *dbstmt_ce, *pce;
+	pdo_dbh_object_t *dbh_obj = Z_PDO_OBJECT_P(getThis());
+	pdo_dbh_t *dbh = dbh_obj->inner;
+
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_STRING(statement, statement_len)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_ARRAY(options)
+	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
+
+	PDO_DBH_CLEAR_ERR();
+	PDO_CONSTRUCT_CHECK;
+
+	printf("prepare2: %s\n", statement);
+}
+
+static int i = 0;
 /* {{{ proto object PDO::prepare(string statement [, array options])
    Prepares a statement for execution and returns a statement object */
 static PHP_METHOD(PDO, prepare)
 {
+    printf("PDO::prepare (%d)\n", i);
+
+    if (i == 1) { exit(1); }
+    i += 1;
+
 	pdo_stmt_t *stmt;
 	char *statement;
 	size_t statement_len;
@@ -1228,6 +1256,11 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_pdo_prepare, 0, 0, 1)
 	ZEND_ARG_INFO(0, options) /* array */
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_pdo_prepare2, 0, 0, 1)
+	ZEND_ARG_INFO(0, statement)
+	ZEND_ARG_INFO(0, options) /* array */
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO(arginfo_pdo_setattribute, 0)
 	ZEND_ARG_INFO(0, attribute)
 	ZEND_ARG_INFO(0, value)
@@ -1257,6 +1290,7 @@ ZEND_END_ARG_INFO()
 const zend_function_entry pdo_dbh_functions[] = /* {{{ */ {
 	ZEND_MALIAS(PDO, __construct, dbh_constructor,	arginfo_pdo___construct,	ZEND_ACC_PUBLIC)
 	PHP_ME(PDO, prepare, 				arginfo_pdo_prepare,		ZEND_ACC_PUBLIC)
+	PHP_ME(PDO, prepare2, 				arginfo_pdo_prepare,		ZEND_ACC_PUBLIC)
 	PHP_ME(PDO, beginTransaction,       arginfo_pdo__void,         ZEND_ACC_PUBLIC)
 	PHP_ME(PDO, commit,                 arginfo_pdo__void,         ZEND_ACC_PUBLIC)
 	PHP_ME(PDO, rollBack,               arginfo_pdo__void,         ZEND_ACC_PUBLIC)

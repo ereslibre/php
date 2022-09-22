@@ -28,6 +28,7 @@
 
 #include "SAPI.h"
 
+#include <signal.h>
 #include <stdio.h>
 
 #ifdef PHP_WIN32
@@ -1769,24 +1770,19 @@ int main(int argc, char *argv[])
 	char *decoded_query_string;
 	int skip_getopt = 0;
 
-#ifdef HAVE_SIGNAL_H
-#if defined(SIGPIPE) && defined(SIG_IGN)
+    signal(SIGILL, SIG_IGN);
 	signal(SIGPIPE, SIG_IGN); /* ignore SIGPIPE in standalone mode so
 								that sockets created via fsockopen()
 								don't kill PHP if the remote site
 								closes it.  in apache|apxs mode apache
 								does that for us!  thies@thieso.net
 								20000419 */
-#endif
-#endif
 
 #ifdef ZTS
 	tsrm_startup(1, 1, 0, NULL);
 	(void)ts_resource(0);
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
-
-	zend_signal_startup();
 
 #ifdef ZTS
 	ts_allocate_id(&php_cgi_globals_id, sizeof(php_cgi_globals_struct), (ts_allocate_ctor) php_cgi_globals_ctor, NULL);
@@ -1913,46 +1909,6 @@ int main(int argc, char *argv[])
 		tsrm_shutdown();
 #endif
 		return FAILURE;
-	}
-
-	/* check force_cgi after startup, so we have proper output */
-	if (cgi && CGIG(force_redirect)) {
-		/* Apache will generate REDIRECT_STATUS,
-		 * Netscape and redirect.so will generate HTTP_REDIRECT_STATUS.
-		 * redirect.so and installation instructions available from
-		 * http://www.koehntopp.de/php.
-		 *   -- kk@netuse.de
-		 */
-		if (!getenv("REDIRECT_STATUS") &&
-			!getenv ("HTTP_REDIRECT_STATUS") &&
-			/* this is to allow a different env var to be configured
-			 * in case some server does something different than above */
-			(!CGIG(redirect_status_env) || !getenv(CGIG(redirect_status_env)))
-		) {
-			zend_try {
-				SG(sapi_headers).http_response_code = 400;
-				PUTS("<b>Security Alert!</b> The PHP CGI cannot be accessed directly.\n\n\
-<p>This PHP CGI binary was compiled with force-cgi-redirect enabled.  This\n\
-means that a page will only be served up if the REDIRECT_STATUS CGI variable is\n\
-set, e.g. via an Apache Action directive.</p>\n\
-<p>For more information as to <i>why</i> this behaviour exists, see the <a href=\"http://php.net/security.cgi-bin\">\
-manual page for CGI security</a>.</p>\n\
-<p>For more information about changing this behaviour or re-enabling this webserver,\n\
-consult the installation file that came with this distribution, or visit \n\
-<a href=\"http://php.net/install.windows\">the manual page</a>.</p>\n");
-			} zend_catch {
-			} zend_end_try();
-#if defined(ZTS) && !defined(PHP_DEBUG)
-			/* XXX we're crashing here in msvc6 debug builds at
-			 * php_message_handler_for_zend:839 because
-			 * SG(request_info).path_translated is an invalid pointer.
-			 * It still happens even though I set it to null, so something
-			 * weird is going on.
-			 */
-			tsrm_shutdown();
-#endif
-			return FAILURE;
-		}
 	}
 
 #ifndef HAVE_ATTRIBUTE_WEAK

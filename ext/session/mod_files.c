@@ -194,10 +194,6 @@ static void ps_files_open(ps_files *data, const char *key)
 #endif
 
 		if (data->fd != -1) {
-			do {
-				ret = flock(data->fd, LOCK_EX);
-			} while (ret == -1 && errno == EINTR);
-
 #ifdef F_SETFD
 # ifndef FD_CLOEXEC
 #  define FD_CLOEXEC 1
