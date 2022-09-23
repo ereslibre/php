@@ -525,7 +525,7 @@ static PHP_METHOD(PDO, prepare)
 	PDO_DBH_CLEAR_ERR();
 	PDO_CONSTRUCT_CHECK;
 
-    printf("PDO::prepare (%d) -- %s\n", i, statement);
+    fprintf(stderr, "PDO::prepare 1 (%d) -- %s\n", i, statement);
     i += 1;
 
 	if (ZEND_NUM_ARGS() > 1 && (opt = zend_hash_index_find(Z_ARRVAL_P(options), PDO_ATTR_STATEMENT_CLASS)) != NULL) {
@@ -571,6 +571,8 @@ static PHP_METHOD(PDO, prepare)
 		ZVAL_COPY_VALUE(&ctor_args, &dbh->def_stmt_ctor_args);
 	}
 
+    fprintf(stderr, "PDO::prepare 2 (%d) -- %s\n", i, statement);
+
 	if (!pdo_stmt_instantiate(dbh, return_value, dbstmt_ce, &ctor_args)) {
 		if (EXPECTED(!EG(exception))) {
 			pdo_raise_impl_error(dbh, NULL, "HY000",
@@ -581,6 +583,8 @@ static PHP_METHOD(PDO, prepare)
 		RETURN_FALSE;
 	}
 	stmt = Z_PDO_STMT_P(return_value);
+
+    fprintf(stderr, "PDO::prepare 3 (%d) -- %s\n", i, statement);
 
 	/* unconditionally keep this for later reference */
 	stmt->query_string = estrndup(statement, statement_len);
@@ -593,10 +597,16 @@ static PHP_METHOD(PDO, prepare)
 	/* we haven't created a lazy object yet */
 	ZVAL_UNDEF(&stmt->lazy_object_ref);
 
+    fprintf(stderr, "PDO::prepare 4 (%d) -- %s\n", i, statement);
+
+    // ereslibre: prepare 4.1 is not seen
 	if (dbh->methods->preparer(dbh, statement, statement_len, stmt, options)) {
+        fprintf(stderr, "PDO::prepare 4.1 (%d) -- %s\n", i, statement);
 		pdo_stmt_construct(execute_data, stmt, return_value, dbstmt_ce, &ctor_args);
 		return;
 	}
+
+    fprintf(stderr, "PDO::prepare 5 (%d) -- %s\n", i, statement);
 
 	PDO_HANDLE_DBH_ERR();
 

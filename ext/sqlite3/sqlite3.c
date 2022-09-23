@@ -465,6 +465,8 @@ PHP_METHOD(sqlite3, escapeString)
    Returns a prepared SQL statement for execution. */
 PHP_METHOD(sqlite3, prepare)
 {
+  fprintf(stderr, "sqlite3::prepare 1\n");
+
 	php_sqlite3_db_object *db_obj;
 	php_sqlite3_stmt *stmt_obj;
 	zval *object = getThis();
@@ -489,7 +491,7 @@ PHP_METHOD(sqlite3, prepare)
 	stmt_obj->db_obj = db_obj;
 	ZVAL_COPY(&stmt_obj->db_obj_zval, object);
 
-	errcode = sqlite3_prepare(db_obj->db, ZSTR_VAL(sql), ZSTR_LEN(sql), &(stmt_obj->stmt), NULL);
+	errcode = sqlite3_prepare_v2(db_obj->db, ZSTR_VAL(sql), ZSTR_LEN(sql), &(stmt_obj->stmt), NULL);
 	if (errcode != SQLITE_OK) {
 		php_sqlite3_error(db_obj, "Unable to prepare statement: %d, %s", errcode, sqlite3_errmsg(db_obj->db));
 		zval_ptr_dtor(return_value);
@@ -544,7 +546,7 @@ PHP_METHOD(sqlite3, query)
 	stmt_obj->db_obj = db_obj;
 	ZVAL_COPY(&stmt_obj->db_obj_zval, object);
 
-	return_code = sqlite3_prepare(db_obj->db, ZSTR_VAL(sql), ZSTR_LEN(sql), &(stmt_obj->stmt), NULL);
+	return_code = sqlite3_prepare_v2(db_obj->db, ZSTR_VAL(sql), ZSTR_LEN(sql), &(stmt_obj->stmt), NULL);
 	if (return_code != SQLITE_OK) {
 		php_sqlite3_error(db_obj, "Unable to prepare statement: %d, %s", return_code, sqlite3_errmsg(db_obj->db));
 		zval_ptr_dtor(&stmt);
@@ -654,7 +656,7 @@ PHP_METHOD(sqlite3, querySingle)
 		return;
 	}
 
-	return_code = sqlite3_prepare(db_obj->db, ZSTR_VAL(sql), ZSTR_LEN(sql), &stmt, NULL);
+	return_code = sqlite3_prepare_v2(db_obj->db, ZSTR_VAL(sql), ZSTR_LEN(sql), &stmt, NULL);
 	if (return_code != SQLITE_OK) {
 		php_sqlite3_error(db_obj, "Unable to prepare statement: %d, %s", return_code, sqlite3_errmsg(db_obj->db));
 		RETURN_FALSE;
@@ -1711,7 +1713,7 @@ PHP_METHOD(sqlite3stmt, __construct)
 	stmt_obj->db_obj = db_obj;
 	ZVAL_COPY(&stmt_obj->db_obj_zval, db_zval);
 
-	errcode = sqlite3_prepare(db_obj->db, ZSTR_VAL(sql), ZSTR_LEN(sql), &(stmt_obj->stmt), NULL);
+	errcode = sqlite3_prepare_v2(db_obj->db, ZSTR_VAL(sql), ZSTR_LEN(sql), &(stmt_obj->stmt), NULL);
 	if (errcode != SQLITE_OK) {
 		php_sqlite3_error(db_obj, "Unable to prepare statement: %d, %s", errcode, sqlite3_errmsg(db_obj->db));
 		zval_ptr_dtor(return_value);

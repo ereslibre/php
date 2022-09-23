@@ -349,7 +349,7 @@ static int do_callback(struct pdo_sqlite_fci *fc, zval *cb,
 			}
 			ZVAL_REF(&zargs[0], agg_context);
 		}
-		ZVAL_LONG(&zargs[1], 0);
+		ZVAL_LONG(&zargs[1], sqlite3_aggregate_count(context));
 	}
 
 	for (i = 0; i < argc; i++) {
