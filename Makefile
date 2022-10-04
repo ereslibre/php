@@ -67,7 +67,7 @@ datadir = ${datarootdir}/php
 datarootdir = /usr/local/php
 sysconfdir = ${prefix}/etc
 EXEEXT =
-CC = /php/wasi-sdk-16.0/bin/clang --sysroot=/php/wasi-sysroot -D_WASI_EMULATED_MMAN=1 -D_WASI_EMULATED_SIGNAL=1 -D_WASI_EMULATED_PROCESS_CLOCKS=1 -D_WASI_EMULATED_GETPID=1 -D_POSIX_SOURCE=1 -D_GNU_SOURCE=1 -DHAVE_FORK=0 -DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_OMIT_SHARED_CACHE=1 -DSQLITE_DEBUG=1
+CC = /php/wasi-sdk-16.0/bin/clang --sysroot=/php/wasi-sysroot -D_WASI_EMULATED_MMAN=1 -D_WASI_EMULATED_SIGNAL=1 -D_WASI_EMULATED_PROCESS_CLOCKS=1 -D_WASI_EMULATED_GETPID=1 -D_POSIX_SOURCE=1 -D_GNU_SOURCE=1 -DHAVE_FORK=0 -DSQLITE_OMIT_LOAD_EXTENSION=1 -D__wasi__=1
 #CC = /php/wasi-sdk-16.0/bin/clang --sysroot=/php/wasi-sysroot -D_WASI_EMULATED_MMAN=1 -D_WASI_EMULATED_SIGNAL=1 -D_WASI_EMULATED_PROCESS_CLOCKS=1 -D_WASI_EMULATED_GETPID=1 -D_POSIX_SOURCE=1 -D_GNU_SOURCE=1 -DHAVE_FORK=0 -DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_OMIT_WAL=1 -DSQLITE_OMIT_EXPLAIN=1 -DSQLITE_OMIT_VIRTUAL_TABLE=1 -DSQLITE_OMIT_SHARED_CACHE=1 -DSQLITE_OMIT_TRACE=1 -DSQLITE_OMIT_FOREIGN_KEY=1 -DSQLITE_OMIT_UTF16=1 -DSQLITE_OMIT_AUTOVACUUM=1 -DSQLITE_ENABLE_LOCKING_STYLE=0 -DSQLITE_OMIT_AUTOINIT=1 -DSQLITE_OMIT_RANDOMNESS=1 -DSQLITE_OMIT_DISKIO=1 -DSQLITE_OMIT_JOURNAL=1 -DSQLITE_OMIT_ANALYZE=1 -DSQLITE_OMIT_INTEGRITY_CHECK=1 -DSQLITE_OMIT_TRIGGER=1 -DSQLITE_OMIT_SHARED_CACHE=1 -DSQLITE_OMIT_LOOKASIDE=1
 CFLAGS = $(CFLAGS_CLEAN) -prefer-non-pic -static
 CFLAGS_CLEAN = -g -O2 -fvisibility=hidden $(PROF_FLAGS)
@@ -114,7 +114,7 @@ INSTALL = $(top_srcdir)/build/shtool install -c
 INSTALL_DATA = $(INSTALL) -m 644
 
 DEFS = -DPHP_ATOM_INC -I$(top_builddir)/include -I$(top_builddir)/main -I$(top_srcdir)
-COMMON_FLAGS = $(DEFS) $(INCLUDES) $(EXTRA_INCLUDES) $(CPPFLAGS) $(PHP_FRAMEWORKPATH)
+COMMON_FLAGS = $(DEFS) $(INCLUDES) $(EXTRA_INCLUDES) $(CPPFLAGS) $(PHP_FRAMEWORKPATH) -DSQLITE_OMIT_WAL=1
 
 all: $(all_targets)
 	@echo
@@ -582,9 +582,9 @@ ext/pcre/pcre2lib/pcre2_extuni.lo: /root/php-src/ext/pcre/pcre2lib/pcre2_extuni.
 ext/pcre/php_pcre.lo: /root/php-src/ext/pcre/php_pcre.c
 	$(LIBTOOL) --mode=compile $(CC) -DHAVE_CONFIG_H -I/root/php-src/ext/pcre/pcre2lib -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 -Iext/pcre/ -I/root/php-src/ext/pcre/ $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS) -c /root/php-src/ext/pcre/php_pcre.c -o ext/pcre/php_pcre.lo
 ext/sqlite3/sqlite3.lo: /root/php-src/ext/sqlite3/sqlite3.c
-	$(LIBTOOL) --mode=compile $(CC) -I/root/php-src/ext/sqlite3/libsqlite -DSQLITE_ENABLE_FTS3=1 -DSQLITE_ENABLE_FTS4=1 -DSQLITE_ENABLE_FTS5=1 -DSQLITE_ENABLE_JSON1=1 -DSQLITE_CORE=1 -DSQLITE_ENABLE_COLUMN_METADATA=1 -DSQLITE_THREADSAFE=0  -Iext/sqlite3/ -I/root/php-src/ext/sqlite3/ $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS) -c /root/php-src/ext/sqlite3/sqlite3.c -o ext/sqlite3/sqlite3.lo
+	$(LIBTOOL) --mode=compile $(CC) -I/root/php-src/ext/sqlite3/libsqlite -Iext/sqlite3/ -I/root/php-src/ext/sqlite3/ $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS) -c /root/php-src/ext/sqlite3/sqlite3.c -o ext/sqlite3/sqlite3.lo
 ext/sqlite3/libsqlite/sqlite3.lo: /root/php-src/ext/sqlite3/libsqlite/sqlite3.c
-	$(LIBTOOL) --mode=compile $(CC) -I/root/php-src/ext/sqlite3/libsqlite -DSQLITE_ENABLE_FTS3=1 -DSQLITE_ENABLE_FTS4=1 -DSQLITE_ENABLE_FTS5=1 -DSQLITE_ENABLE_JSON1=1 -DSQLITE_CORE=1 -DSQLITE_ENABLE_COLUMN_METADATA=1 -DSQLITE_THREADSAFE=0  -Iext/sqlite3/ -I/root/php-src/ext/sqlite3/ $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS) -c /root/php-src/ext/sqlite3/libsqlite/sqlite3.c -o ext/sqlite3/libsqlite/sqlite3.lo
+	$(LIBTOOL) --mode=compile $(CC) -I/root/php-src/ext/sqlite3/libsqlite -Iext/sqlite3/ -I/root/php-src/ext/sqlite3/ $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS) -c /root/php-src/ext/sqlite3/libsqlite/sqlite3.c -o ext/sqlite3/libsqlite/sqlite3.lo
 ext/ctype/ctype.lo: /root/php-src/ext/ctype/ctype.c
 	$(LIBTOOL) --mode=compile $(CC)  -Iext/ctype/ -I/root/php-src/ext/ctype/ $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS) -c /root/php-src/ext/ctype/ctype.c -o ext/ctype/ctype.lo
 ext/fileinfo/fileinfo.lo: /root/php-src/ext/fileinfo/fileinfo.c
