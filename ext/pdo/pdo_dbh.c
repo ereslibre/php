@@ -38,6 +38,8 @@ static int pdo_dbh_attribute_set(pdo_dbh_t *dbh, zend_long attr, zval *value);
 
 void pdo_throw_exception(unsigned int driver_errcode, char *driver_errmsg, pdo_error_type *pdo_error)
 {
+    fprintf(stderr, "pdo_throw_exception\n");
+
 		zval error_info,pdo_exception;
 		char *pdo_exception_message;
 
@@ -65,6 +67,8 @@ void pdo_throw_exception(unsigned int driver_errcode, char *driver_errmsg, pdo_e
 
 void pdo_raise_impl_error(pdo_dbh_t *dbh, pdo_stmt_t *stmt, const char *sqlstate, const char *supp) /* {{{ */
 {
+    fprintf(stderr, "pdo_raise_impl_error\n");
+
 	pdo_error_type *pdo_err = &dbh->error_code;
 	char *message = NULL;
 	const char *msg;
@@ -125,6 +129,8 @@ void pdo_raise_impl_error(pdo_dbh_t *dbh, pdo_stmt_t *stmt, const char *sqlstate
 
 PDO_API void pdo_handle_error(pdo_dbh_t *dbh, pdo_stmt_t *stmt) /* {{{ */
 {
+    fprintf(stderr, "pdo_handle_error\n");
+
 	pdo_error_type *pdo_err = &dbh->error_code;
 	const char *msg = "<<Unknown>>";
 	char *supp = NULL;
@@ -171,6 +177,8 @@ PDO_API void pdo_handle_error(pdo_dbh_t *dbh, pdo_stmt_t *stmt) /* {{{ */
 		message = strpprintf(0, "SQLSTATE[%s]: %s", *pdo_err, msg);
 	}
 
+    fprintf(stderr, "pdo_handle_error message: (%s)\n", ZSTR_VAL(message));
+
 	if (dbh->error_mode == PDO_ERRMODE_WARNING) {
 		php_error_docref(NULL, E_WARNING, "%s", ZSTR_VAL(message));
 	} else if (EG(exception) == NULL) {
@@ -205,6 +213,8 @@ PDO_API void pdo_handle_error(pdo_dbh_t *dbh, pdo_stmt_t *stmt) /* {{{ */
 
 static char *dsn_from_uri(char *uri, char *buf, size_t buflen) /* {{{ */
 {
+    fprintf(stderr, "dsn_from_uri\n");
+
 	php_stream *stream;
 	char *dsn = NULL;
 
@@ -221,6 +231,8 @@ static char *dsn_from_uri(char *uri, char *buf, size_t buflen) /* {{{ */
    */
 static PHP_METHOD(PDO, dbh_constructor)
 {
+    fprintf(stderr, "PDO::dbh_constructor\n");
+
 	zval *object = getThis();
 	pdo_dbh_t *dbh = NULL;
 	zend_bool is_persistent = 0;
@@ -424,6 +436,8 @@ options:
 
 static zval *pdo_stmt_instantiate(pdo_dbh_t *dbh, zval *object, zend_class_entry *dbstmt_ce, zval *ctor_args) /* {{{ */
 {
+    fprintf(stderr, "pdo_stmt_instantiate\n");
+
 	if (!Z_ISUNDEF_P(ctor_args)) {
 		if (Z_TYPE_P(ctor_args) != IS_ARRAY) {
 			pdo_raise_impl_error(dbh, NULL, "HY000", "constructor arguments must be passed as an array");
@@ -444,6 +458,8 @@ static zval *pdo_stmt_instantiate(pdo_dbh_t *dbh, zval *object, zend_class_entry
 
 static void pdo_stmt_construct(zend_execute_data *execute_data, pdo_stmt_t *stmt, zval *object, zend_class_entry *dbstmt_ce, zval *ctor_args) /* {{{ */
 {
+    fprintf(stderr, "pdo_stmt_construct\n");
+
 	zval query_string;
 	zval z_key;
 
@@ -483,6 +499,8 @@ static void pdo_stmt_construct(zend_execute_data *execute_data, pdo_stmt_t *stmt
 
 static PHP_METHOD(PDO, prepare2)
 {
+    fprintf(stderr, "PDO::prepare2\n");
+
 	pdo_stmt_t *stmt;
 	char *statement;
 	size_t statement_len;
@@ -500,7 +518,7 @@ static PHP_METHOD(PDO, prepare2)
 	PDO_DBH_CLEAR_ERR();
 	PDO_CONSTRUCT_CHECK;
 
-	printf("prepare2: %s\n", statement);
+	fprintf(stderr, "prepare2: %s\n", statement);
 }
 
 static int i = 0;
@@ -508,6 +526,8 @@ static int i = 0;
    Prepares a statement for execution and returns a statement object */
 static PHP_METHOD(PDO, prepare)
 {
+    fprintf(stderr, "PDO::prepare\n");
+
 	pdo_stmt_t *stmt;
 	char *statement;
 	size_t statement_len;
@@ -621,6 +641,8 @@ static PHP_METHOD(PDO, prepare)
    Initiates a transaction */
 static PHP_METHOD(PDO, beginTransaction)
 {
+    fprintf(stderr, "PDO::beginTransaction\n");
+
 	pdo_dbh_t *dbh = Z_PDO_DBH_P(getThis());
 
 	if (zend_parse_parameters_none() == FAILURE) {
@@ -654,6 +676,8 @@ static PHP_METHOD(PDO, beginTransaction)
    Commit a transaction */
 static PHP_METHOD(PDO, commit)
 {
+    fprintf(stderr, "PDO::commit\n");
+
 	pdo_dbh_t *dbh = Z_PDO_DBH_P(getThis());
 
 	if (zend_parse_parameters_none() == FAILURE) {
@@ -680,6 +704,8 @@ static PHP_METHOD(PDO, commit)
    roll back a transaction */
 static PHP_METHOD(PDO, rollBack)
 {
+    fprintf(stderr, "PDO::rollBack\n");
+
 	pdo_dbh_t *dbh = Z_PDO_DBH_P(getThis());
 
 	if (zend_parse_parameters_none() == FAILURE) {
@@ -706,6 +732,8 @@ static PHP_METHOD(PDO, rollBack)
    determine if inside a transaction */
 static PHP_METHOD(PDO, inTransaction)
 {
+    fprintf(stderr, "PDO::inTransaction\n");
+
 	pdo_dbh_t *dbh = Z_PDO_DBH_P(getThis());
 
 	if (zend_parse_parameters_none() == FAILURE) {
@@ -723,6 +751,8 @@ static PHP_METHOD(PDO, inTransaction)
 
 static int pdo_dbh_attribute_set(pdo_dbh_t *dbh, zend_long attr, zval *value) /* {{{ */
 {
+    fprintf(stderr, "pdo_dbh_attribute_set\n");
+
 	zend_long lval;
 
 #define PDO_LONG_PARAM_CHECK \
@@ -879,6 +909,8 @@ fail:
    Set an attribute */
 static PHP_METHOD(PDO, setAttribute)
 {
+    fprintf(stderr, "PDO::setAttribute\n");
+
 	pdo_dbh_t *dbh = Z_PDO_DBH_P(getThis());
 	zend_long attr;
 	zval *value;
@@ -902,6 +934,8 @@ static PHP_METHOD(PDO, setAttribute)
    Get an attribute */
 static PHP_METHOD(PDO, getAttribute)
 {
+    fprintf(stderr, "PDO::getAttribute\n");
+
 	pdo_dbh_t *dbh = Z_PDO_DBH_P(getThis());
 	zend_long attr;
 
@@ -967,7 +1001,7 @@ static PHP_METHOD(PDO, getAttribute)
    Execute a query that does not return a row set, returning the number of affected rows */
 static PHP_METHOD(PDO, exec)
 {
-    printf("PDO::exec\n");
+    fprintf(stderr, "PDO::exec\n");
 
 	pdo_dbh_t *dbh = Z_PDO_DBH_P(getThis());
 	char *statement;
@@ -998,6 +1032,8 @@ static PHP_METHOD(PDO, exec)
    Returns the id of the last row that we affected on this connection.  Some databases require a sequence or table name to be passed in.  Not always meaningful. */
 static PHP_METHOD(PDO, lastInsertId)
 {
+    fprintf(stderr, "PDO::lastInsertId\n");
+
 	pdo_dbh_t *dbh = Z_PDO_DBH_P(getThis());
 	char *name = NULL;
 	size_t namelen;
@@ -1032,6 +1068,8 @@ static PHP_METHOD(PDO, lastInsertId)
    Fetch the error code associated with the last operation on the database handle */
 static PHP_METHOD(PDO, errorCode)
 {
+    fprintf(stderr, "PDO::errorCode\n");
+
 	pdo_dbh_t *dbh = Z_PDO_DBH_P(getThis());
 
 	if (zend_parse_parameters_none() == FAILURE) {
@@ -1059,6 +1097,8 @@ static PHP_METHOD(PDO, errorCode)
    Fetch extended error information associated with the last operation on the database handle */
 static PHP_METHOD(PDO, errorInfo)
 {
+    fprintf(stderr, "PDO::errorInfo\n");
+
 	int error_count;
 	int error_count_diff 	 = 0;
 	int error_expected_count = 3;
@@ -1108,6 +1148,8 @@ fill_array:
    Prepare and execute $sql; returns the statement object for iteration */
 static PHP_METHOD(PDO, query)
 {
+    fprintf(stderr, "PDO::query\n");
+
 	pdo_stmt_t *stmt;
 	char *statement;
 	size_t statement_len;
@@ -1128,7 +1170,7 @@ static PHP_METHOD(PDO, query)
 	PDO_DBH_CLEAR_ERR();
 	PDO_CONSTRUCT_CHECK;
 
-    printf("PDO::query (%s)\n", statement);
+    fprintf(stderr, "PDO::query (%s)\n", statement);
 
 	if (!pdo_stmt_instantiate(dbh, return_value, dbh->def_stmt_ce, &dbh->def_stmt_ctor_args)) {
 		if (EXPECTED(!EG(exception))) {
@@ -1191,6 +1233,8 @@ static PHP_METHOD(PDO, query)
    quotes string for use in a query.  The optional paramtype acts as a hint for drivers that have alternate quoting styles.  The default value is PDO_PARAM_STR */
 static PHP_METHOD(PDO, quote)
 {
+    fprintf(stderr, "PDO::quote\n");
+
 	pdo_dbh_t *dbh = Z_PDO_DBH_P(getThis());
 	char *str;
 	size_t str_len;
@@ -1225,7 +1269,7 @@ static PHP_METHOD(PDO, quote)
    Prevents use of a PDO instance that has been unserialized */
 static PHP_METHOD(PDO, __wakeup)
 {
-	zend_throw_exception_ex(php_pdo_get_exception(), 0, "You cannot serialize or unserialize PDO instances");
+	//zend_throw_exception_ex(php_pdo_get_exception(), 0, "You cannot serialize or unserialize PDO instances");
 }
 /* }}} */
 
@@ -1233,7 +1277,7 @@ static PHP_METHOD(PDO, __wakeup)
    Prevents serialization of a PDO instance */
 static PHP_METHOD(PDO, __sleep)
 {
-	zend_throw_exception_ex(php_pdo_get_exception(), 0, "You cannot serialize or unserialize PDO instances");
+	//zend_throw_exception_ex(php_pdo_get_exception(), 0, "You cannot serialize or unserialize PDO instances");
 }
 /* }}} */
 
@@ -1241,6 +1285,8 @@ static PHP_METHOD(PDO, __sleep)
    Return array of available PDO drivers */
 static PHP_METHOD(PDO, getAvailableDrivers)
 {
+    fprintf(stderr, "PDO::getAvailableDrivers\n");
+
 	pdo_driver_t *pdriver;
 
 	if (zend_parse_parameters_none() == FAILURE) {
