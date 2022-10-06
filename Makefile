@@ -116,6 +116,14 @@ INSTALL_DATA = $(INSTALL) -m 644
 DEFS = -DPHP_ATOM_INC -I$(top_builddir)/include -I$(top_builddir)/main -I$(top_srcdir)
 COMMON_FLAGS = $(DEFS) $(INCLUDES) $(EXTRA_INCLUDES) $(CPPFLAGS) $(PHP_FRAMEWORKPATH)
 
+.PHONY: build-shell
+build-shell:
+	podman run -d -v /home/ereslibre/projects/php:/root/php-src -it ghcr.io/ereslibre/php:1005 sleep infinity
+
+.PHONY: run
+run:
+	podman rm -f mod_wasm; podman run -d --name mod_wasm -p8080:8080 -v /home/ereslibre/projects/php/sapi/cgi:/usr/local/apache2/wasm_modules -v /home/ereslibre/Downloads/wp-sqlite-db:/usr/local/apache2/htdocs localhost/httpd-mod-wasm:latest; clear; podman logs -f mod_wasm
+
 all: $(all_targets)
 	@echo
 	@echo "Build complete."
