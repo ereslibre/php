@@ -423,7 +423,7 @@ file_pipe2file(struct magic_set *ms, int fd, const void *startbuf,
 	int tfd;
 
 	(void)strlcpy(buf, "/tmp/file.XXXXXX", sizeof buf);
-#ifndef HAVE_MKSTEMP
+#if !defined(HAVE_MKSTEMP) && !defined(WASM_WASI)
 	{
 		char *ptr = mktemp(buf);
 		tfd = open(ptr, O_RDWR|O_TRUNC|O_EXCL|O_CREAT, 0600);

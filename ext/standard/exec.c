@@ -92,6 +92,7 @@ PHP_MINIT_FUNCTION(exec)
  */
 PHPAPI int php_exec(int type, char *cmd, zval *array, zval *return_value)
 {
+#ifndef WASM_WASI
 	FILE *fp;
 	char *buf;
 	size_t l = 0;
@@ -207,6 +208,9 @@ done:
 err:
 	pclose_return = -1;
 	goto done;
+#else
+	return 0;
+#endif // WASM_WASI
 }
 /* }}} */
 
@@ -527,6 +531,7 @@ PHP_FUNCTION(escapeshellarg)
    Execute command via shell and return complete output as string */
 PHP_FUNCTION(shell_exec)
 {
+#ifndef WASM_WASI
 	FILE *in;
 	char *command;
 	size_t command_len;
@@ -562,6 +567,9 @@ PHP_FUNCTION(shell_exec)
 	if (ret && ZSTR_LEN(ret) > 0) {
 		RETVAL_STR(ret);
 	}
+#else
+	RETURN_FALSE;
+#endif
 }
 /* }}} */
 

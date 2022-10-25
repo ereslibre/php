@@ -248,13 +248,17 @@ php_stream * php_stream_url_wrap_php(php_stream_wrapper *wrapper, const char *pa
 			static int cli_in = 0;
 			fd = STDIN_FILENO;
 			if (cli_in) {
+#ifndef WASM_WASI
 				fd = dup(fd);
+#endif // WASM_WASI
 			} else {
 				cli_in = 1;
 				file = stdin;
 			}
 		} else {
+#ifndef WASM_WASI
 			fd = dup(STDIN_FILENO);
+#endif // WASM_WASI
 		}
 #ifdef PHP_WIN32
 		pipe_requested = 1;
@@ -264,13 +268,17 @@ php_stream * php_stream_url_wrap_php(php_stream_wrapper *wrapper, const char *pa
 			static int cli_out = 0;
 			fd = STDOUT_FILENO;
 			if (cli_out++) {
+#ifndef WASM_WASI
 				fd = dup(fd);
+#endif // WASM_WASI
 			} else {
 				cli_out = 1;
 				file = stdout;
 			}
 		} else {
+#ifndef WASM_WASI
 			fd = dup(STDOUT_FILENO);
+#endif // WASM_WASI
 		}
 #ifdef PHP_WIN32
 		pipe_requested = 1;
@@ -280,13 +288,17 @@ php_stream * php_stream_url_wrap_php(php_stream_wrapper *wrapper, const char *pa
 			static int cli_err = 0;
 			fd = STDERR_FILENO;
 			if (cli_err++) {
+#ifndef WASM_WASI
 				fd = dup(fd);
+#endif // WASM_WASI
 			} else {
 				cli_err = 1;
 				file = stderr;
 			}
 		} else {
+#ifndef WASM_WASI
 			fd = dup(STDERR_FILENO);
+#endif // WASM_WASI
 		}
 #ifdef PHP_WIN32
 		pipe_requested = 1;
@@ -319,7 +331,7 @@ php_stream * php_stream_url_wrap_php(php_stream_wrapper *wrapper, const char *pa
 			return NULL;
 		}
 
-#if HAVE_UNISTD_H
+#if HAVE_UNISTD_H && !defined(WASM_WASI)
 		dtablesize = getdtablesize();
 #else
 		dtablesize = INT_MAX;
@@ -331,6 +343,7 @@ php_stream * php_stream_url_wrap_php(php_stream_wrapper *wrapper, const char *pa
 			return NULL;
 		}
 
+#ifndef WASM_WASI
 		fd = dup((int)fildes_ori);
 		if (fd == -1) {
 			php_stream_wrapper_log_error(wrapper, options,
@@ -338,6 +351,7 @@ php_stream * php_stream_url_wrap_php(php_stream_wrapper *wrapper, const char *pa
 				"[%d]: %s", fildes_ori, errno, strerror(errno));
 			return NULL;
 		}
+#endif // WASM_WASI
 	} else if (!strncasecmp(path, "filter/", 7)) {
 		/* Save time/memory when chain isn't specified */
 		if (strchr(mode, 'r') || strchr(mode, '+')) {

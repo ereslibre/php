@@ -67,7 +67,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/wait.h>
-#include <grp.h>
+#ifndef WASM_WASI
+#  include <grp.h>
+#endif // WASM_WASI
 #include <pwd.h>
 #include <time.h>
 #include <unistd.h>

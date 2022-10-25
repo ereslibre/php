@@ -1502,6 +1502,7 @@ static ZEND_COLD void php_error_cb(int type, const char *error_filename, const u
  */
 PHPAPI char *php_get_current_user(void)
 {
+#ifndef WASM_WASI
 	zend_stat_t *pstat;
 
 	if (SG(request_info).current_user) {
@@ -1564,6 +1565,9 @@ PHPAPI char *php_get_current_user(void)
 		return SG(request_info).current_user;
 #endif
 	}
+#else
+	return "";
+#endif // WASM_WASI
 }
 /* }}} */
 

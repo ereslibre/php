@@ -33,7 +33,9 @@
 # ifdef PHP_WIN32
 #  include "win32/grp.h"
 # else
+#ifndef WASM_WASI
 #  include <grp.h>
+#endif // WASM_WASI
 # endif
 #endif
 #ifdef PHP_WIN32
@@ -68,8 +70,10 @@ PHPAPI void php_statpage(void)
 			BG(page_inode) = pstat->st_ino;
 			BG(page_mtime) = pstat->st_mtime;
 		} else { /* handler for situations where there is no source file, ex. php -r */
+#ifndef WASM_WASI
 			BG(page_uid) = getuid();
 			BG(page_gid) = getgid();
+#endif // WASM_WASI
 		}
 	}
 }
@@ -79,21 +83,30 @@ PHPAPI void php_statpage(void)
  */
 zend_long php_getuid(void)
 {
+#ifndef WASM_WASI
 	php_statpage();
 	return (BG(page_uid));
+#else
+	return 0;
+#endif //WASM_WASI
 }
 /* }}} */
 
 zend_long php_getgid(void)
 {
+#ifndef WASM_WASI
 	php_statpage();
 	return (BG(page_gid));
+#else
+	return 0;
+#endif //WASM_WASI
 }
 
 /* {{{ proto int getmyuid(void)
    Get PHP script owner's UID */
 PHP_FUNCTION(getmyuid)
 {
+#ifndef WASM_WASI
 	zend_long uid;
 
 	if (zend_parse_parameters_none() == FAILURE) {
@@ -106,6 +119,9 @@ PHP_FUNCTION(getmyuid)
 	} else {
 		RETURN_LONG(uid);
 	}
+#else
+	RETURN_LONG(0);
+#endif // WASM_WASI
 }
 /* }}} */
 

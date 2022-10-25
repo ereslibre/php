@@ -209,6 +209,7 @@ typedef int (*zend_write_func_t)(const char *str, size_t str_length);
 
 #define zend_bailout()		_zend_bailout(__FILE__, __LINE__)
 
+#ifndef WASM_WASI
 #define zend_try												\
 	{															\
 		JMP_BUF *__orig_bailout = EG(bailout);					\
@@ -224,6 +225,18 @@ typedef int (*zend_write_func_t)(const char *str, size_t str_length);
 		EG(bailout) = __orig_bailout;							\
 	}
 #define zend_first_try		EG(bailout)=NULL;	zend_try
+
+#else // WASM_WASI
+#define zend_try												\
+	{															\
+		if (1) {
+#define zend_catch												\
+		} else {
+#define zend_end_try()											\
+		}														\
+	}
+#define zend_first_try		zend_try
+#endif // WASM_WASI
 
 BEGIN_EXTERN_C()
 int zend_startup(zend_utility_functions *utility_functions);

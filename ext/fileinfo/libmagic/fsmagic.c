@@ -199,6 +199,7 @@ file_fsmagic(struct magic_set *ms, const char *fn, zend_stat_t *sb)
 	return 1;
 #endif
 
+#ifndef WASM_WASI
 #ifdef	S_IFSOCK
 #ifndef __COHERENT__
 	case S_IFSOCK:
@@ -211,6 +212,7 @@ file_fsmagic(struct magic_set *ms, const char *fn, zend_stat_t *sb)
 		break;
 #endif
 #endif
+#endif // WASM_WASI
 	case S_IFREG:
 		/*
 		 * regular file, check next possibility

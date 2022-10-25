@@ -9,7 +9,9 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <pwd.h>
-#include <grp.h>
+#ifndef WASM_WASI
+#  include <grp.h>
+#endif // WASM_WASI
 
 #ifdef HAVE_PRCTL
 #include <sys/prctl.h>

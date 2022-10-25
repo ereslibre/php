@@ -2378,7 +2378,11 @@ static ZEND_VM_COLD ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_EXIT_SPEC_HANDLER
 		} while (0);
 		FREE_OP(free_op1);
 	}
+#ifndef WASM_WASI
 	zend_bailout();
+#else
+	exit(0);
+#endif // WASM_WASI
 	ZEND_VM_NEXT_OPCODE(); /* Never reached */
 }
 

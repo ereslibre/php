@@ -45,7 +45,9 @@
 #ifdef PHP_WIN32
 #include "win32/grp.h"
 #else
-#include <grp.h>
+#ifndef WASM_WASI
+#  include <grp.h>
+#endif // WASM_WASI
 #endif
 #endif
 #include <errno.h>

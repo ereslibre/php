@@ -56,6 +56,7 @@ PHPAPI void php_syslog(int priority, const char *format, ...) /* {{{ */
 #else
 PHPAPI void php_syslog(int priority, const char *format, ...) /* {{{ */
 {
+#ifndef WASM_WASI
 	const char *ptr;
 	unsigned char c;
 	smart_string fbuf = {0};
@@ -112,6 +113,7 @@ PHPAPI void php_syslog(int priority, const char *format, ...) /* {{{ */
 
 	smart_string_free(&fbuf);
 	smart_string_free(&sbuf);
+#endif // WASM_WASI
 }
 /* }}} */
 #endif

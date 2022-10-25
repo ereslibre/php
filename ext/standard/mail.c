@@ -462,6 +462,7 @@ static int php_mail_detect_multiple_crlf(char *hdr) {
  */
 PHPAPI int php_mail(char *to, char *subject, char *message, char *headers, char *extra_cmd)
 {
+#ifndef WASM_WASI
 #ifdef PHP_WIN32
 	int tsm_err;
 	char *tsm_errmsg = NULL;
@@ -635,6 +636,9 @@ PHPAPI int php_mail(char *to, char *subject, char *message, char *headers, char 
 	}
 
 	MAIL_RET(1); /* never reached */
+#else
+	return 0;
+#endif // WASM_WASI
 }
 /* }}} */
 

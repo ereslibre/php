@@ -56,7 +56,9 @@
 
 #ifndef PHP_WIN32
 #include <netinet/in.h>
+#ifndef WASM_WASI
 #include <netdb.h>
+#endif
 #if HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
@@ -157,6 +159,7 @@ PHPAPI void php_network_freeaddresses(struct sockaddr **sal)
  */
 PHPAPI int php_network_getaddresses(const char *host, int socktype, struct sockaddr ***sal, zend_string **error_string)
 {
+#ifndef WASM_WASI
 	struct sockaddr **sap;
 	int n;
 #if HAVE_GETADDRINFO
@@ -275,6 +278,9 @@ PHPAPI int php_network_getaddresses(const char *host, int socktype, struct socka
 
 	*sap = NULL;
 	return n;
+#else
+	return 0;
+#endif // WASM_WASI
 }
 /* }}} */
 
@@ -310,6 +316,7 @@ PHPAPI int php_network_connect_socket(php_socket_t sockfd,
 		zend_string **error_string,
 		int *error_code)
 {
+#ifndef WASM_WASI
 	php_non_blocking_flags_t orig_flags;
 	int n;
 	int error = 0;
@@ -387,6 +394,9 @@ ok:
 		}
 	}
 	return ret;
+#else
+	return 0;
+#endif // WASM_WASI
 }
 /* }}} */
 
@@ -431,7 +441,11 @@ php_socket_t php_network_bind_socket_to_local_addr(const char *host, unsigned po
 		sa = *sal;
 
 		/* create a socket for this address */
+#ifndef WASM_WASI
 		sock = socket(sa->sa_family, socktype, 0);
+#else
+		sock = SOCK_ERR;
+#endif // WASM_WASI 
 
 		if (sock == SOCK_ERR) {
 			continue;
@@ -460,31 +474,45 @@ php_socket_t php_network_bind_socket_to_local_addr(const char *host, unsigned po
 			/* attempt to bind */
 
 #ifdef SO_REUSEADDR
+#ifndef WASM_WASI
 			setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char*)&sockoptval, sizeof(sockoptval));
+#endif // WASM_WASI 
 #endif
 #ifdef IPV6_V6ONLY
 			if (sockopts & STREAM_SOCKOP_IPV6_V6ONLY) {
 				int ipv6_val = !!(sockopts & STREAM_SOCKOP_IPV6_V6ONLY_ENABLED);
+#ifndef WASM_WASI
 				setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&ipv6_val, sizeof(sockoptval));
+#endif // WASM_WASI 
 			}
 #endif
 #ifdef SO_REUSEPORT
 			if (sockopts & STREAM_SOCKOP_SO_REUSEPORT) {
+#ifndef WASM_WASI
 				setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, (char*)&sockoptval, sizeof(sockoptval));
+#endif // WASM_WASI 
 			}
 #endif
 #ifdef SO_BROADCAST
 			if (sockopts & STREAM_SOCKOP_SO_BROADCAST) {
+#ifndef WASM_WASI
 				setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char*)&sockoptval, sizeof(sockoptval));
+#endif // WASM_WASI 
 			}
 #endif
 #ifdef TCP_NODELAY
 			if (sockopts & STREAM_SOCKOP_TCP_NODELAY) {
+#ifndef WASM_WASI
 				setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&sockoptval, sizeof(sockoptval));
+#endif // WASM_WASI 
 			}
 #endif
 
+#ifndef WASM_WASI
 			n = bind(sock, sa, socklen);
+#else
+			n = SOCK_CONN_ERR;
+#endif // WASM_WASI 
 
 			if (n != SOCK_CONN_ERR) {
 				goto bound;
@@ -614,6 +642,7 @@ PHPAPI void php_network_populate_name_from_sockaddr(
 		socklen_t *addrlen
 		)
 {
+#ifndef WASM_WASI
 	if (addr) {
 		*addr = emalloc(sl);
 		memcpy(*addr, sa, sl);
@@ -667,6 +696,7 @@ PHPAPI void php_network_populate_name_from_sockaddr(
 		}
 
 	}
+#endif // WASM_WASI
 }
 
 PHPAPI int php_network_get_peer_name(php_socket_t sock,
@@ -675,6 +705,7 @@ PHPAPI int php_network_get_peer_name(php_socket_t sock,
 		socklen_t *addrlen
 		)
 {
+#ifndef WASM_WASI
 	php_sockaddr_storage sa;
 	socklen_t sl = sizeof(sa);
 	memset(&sa, 0, sizeof(sa));
@@ -687,6 +718,9 @@ PHPAPI int php_network_get_peer_name(php_socket_t sock,
 		return 0;
 	}
 	return -1;
+#else
+	return 0;
+#endif // WASM_WASI
 }
 
 PHPAPI int php_network_get_sock_name(php_socket_t sock,
@@ -695,6 +729,7 @@ PHPAPI int php_network_get_sock_name(php_socket_t sock,
 		socklen_t *addrlen
 		)
 {
+#ifndef WASM_WASI
 	php_sockaddr_storage sa;
 	socklen_t sl = sizeof(sa);
 	memset(&sa, 0, sizeof(sa));
@@ -707,7 +742,9 @@ PHPAPI int php_network_get_sock_name(php_socket_t sock,
 		return 0;
 	}
 	return -1;
-
+#else
+	return 0;
+#endif // WASM_WASI
 }
 
 
@@ -753,7 +790,9 @@ PHPAPI php_socket_t php_network_accept_incoming(php_socket_t srvsock,
 					);
 			if (tcp_nodelay) {
 #ifdef TCP_NODELAY
+#ifndef WASM_WASI
 				setsockopt(clisock, IPPROTO_TCP, TCP_NODELAY, (char*)&tcp_nodelay, sizeof(tcp_nodelay));
+#endif // WASM_WASI
 #endif
 			}
 		} else {
@@ -870,7 +909,9 @@ php_socket_t php_network_connect_socket_to_host(const char *host, unsigned short
 						php_error_docref(NULL, E_WARNING, "Invalid IP Address: %s", bindto);
 						goto skip_bind;
 					}
+#ifndef WASM_WASI
 					memset(&(in4->sin_zero), 0, sizeof(in4->sin_zero));
+#endif // WASM_WASI
 				}
 #if HAVE_IPV6 && HAVE_INET_PTON
 				 else { /* IPV6 */
@@ -906,7 +947,9 @@ skip_bind:
 			{
 				int val = 1;
 				if (sockopts & STREAM_SOCKOP_SO_BROADCAST) {
+#ifndef WASM_WASI
 					setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(val));
+#endif // WASM_WASI
 				}
 			}
 #endif
@@ -915,7 +958,9 @@ skip_bind:
 			{
 				int val = 1;
 				if (sockopts & STREAM_SOCKOP_TCP_NODELAY) {
+#ifndef WASM_WASI
 					setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&val, sizeof(val));
+#endif // WASM_WASI
 				}
 			}
 #endif
@@ -1320,6 +1365,7 @@ struct hostent * gethostname_re (const char *host,struct hostent *hostbuf,char *
 #endif
 
 PHPAPI struct hostent*	php_network_gethostbyname(char *name) {
+#ifndef WASM_WASI
 #if !defined(HAVE_GETHOSTBYNAME_R)
 	return gethostbyname(name);
 #else
@@ -1334,4 +1380,7 @@ PHPAPI struct hostent*	php_network_gethostbyname(char *name) {
 
 	return gethostname_re(name, &FG(tmp_host_info), &FG(tmp_host_buf), &FG(tmp_host_buf_len));
 #endif
+#else
+	return NULL;
+#endif // WASM_WASI
 }

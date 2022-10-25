@@ -36,7 +36,9 @@
 #if HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
+#ifndef WASM_WASI
 #include <netdb.h>
+#endif
 #ifdef _OSD_POSIX
 #undef STATUS
 #undef T_UNSPEC
@@ -174,6 +176,7 @@ PHP_FUNCTION(gethostbyaddr)
 /* {{{ php_gethostbyaddr */
 static zend_string *php_gethostbyaddr(char *ip)
 {
+#ifndef WASM_WASI
 #if HAVE_IPV6 && HAVE_INET_PTON
 	struct in6_addr addr6;
 #endif
@@ -203,6 +206,9 @@ static zend_string *php_gethostbyaddr(char *ip)
 	}
 
 	return zend_string_init(hp->h_name, strlen(hp->h_name), 0);
+#else
+	return NULL;
+#endif // WASM_WASI
 }
 /* }}} */
 
@@ -231,6 +237,7 @@ PHP_FUNCTION(gethostbyname)
    Return a list of IP addresses that a given hostname resolves to. */
 PHP_FUNCTION(gethostbynamel)
 {
+#ifndef WASM_WASI
 	char *hostname;
 	size_t hostname_len;
 	struct hostent *hp;
@@ -265,12 +272,16 @@ PHP_FUNCTION(gethostbynamel)
 		in = *h_addr_entry;
 		add_next_index_string(return_value, inet_ntoa(in));
 	}
+#else
+	RETURN_FALSE;
+#endif //WASM_WASI
 }
 /* }}} */
 
 /* {{{ php_gethostbyname */
 static zend_string *php_gethostbyname(char *name)
 {
+#ifndef WASM_WASI
 	struct hostent *hp;
 	struct in_addr *h_addr_0; /* Don't call this h_addr, it's a macro! */
 	struct in_addr in;
@@ -291,6 +302,9 @@ static zend_string *php_gethostbyname(char *name)
 
 	address = inet_ntoa(in);
 	return zend_string_init(address, strlen(address), 0);
+#else
+	return NULL;
+#endif // WASM_WASI
 }
 /* }}} */
 
