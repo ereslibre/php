@@ -8,21 +8,22 @@ fi
 
 if [[ ! -v WASMLABS_BUILD_OUTPUT ]]
 then
-    echo "Assuming $PWD/wasmlabs-build-output as WASMLABS_BUILD_OUTPUT"
-    export WASMLABS_BUILD_OUTPUT=$PWD/wasmlabs-build-output
+    echo "Assuming $PWD/wasmlabs-output as WASMLABS_BUILD_OUTPUT"
+    export WASMLABS_BUILD_OUTPUT=$PWD/wasmlabs-output
+    mkdir $WASMLABS_BUILD_OUTPUT 2>&1 >/dev/null
 fi
 
 function onExit {
     echo "=============================================================="
     echo "Build progress logs:"
-    cat wasmlabs-progress.log
+    cat $WASMLABS_BUILD_OUTPUT/wasmlabs-progress.log
 }
 trap onExit EXIT
 
-echo "$(date --iso-8601=ns) | Using WASI_SDK_ROOT=$WASI_SDK_ROOT " > wasmlabs-progress.log
+echo "$(date --iso-8601=ns) | Using WASI_SDK_ROOT=$WASI_SDK_ROOT " >  $WASMLABS_BUILD_OUTPUT/wasmlabs-progress.log
 
 function logStatus {
-    echo "$(date --iso-8601=ns) | $@" >> wasmlabs-progress.log
+    echo "$(date --iso-8601=ns) | $@" >>  $WASMLABS_BUILD_OUTPUT/wasmlabs-progress.log
 }
 
 export WASI_SYSROOT="${WASI_SDK_ROOT}/share/wasi-sysroot"
@@ -37,8 +38,8 @@ export RANLIB=${WASI_SDK_ROOT}/bin/llvm-ranlib
 # export CFLAGS_CONFIG="-O3 -g"
 export CFLAGS_CONFIG="-O2"
 
-export CFLAGS_WASI="--sysroot=${WASI_SYSROOT} -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_GETPID -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS"
-export LDFLAGS_WASI="--sysroot=${WASI_SYSROOT} -lwasi-emulated-mman -lwasi-emulated-getpid -lwasi-emulated-signal -lwasi-emulated-process-clocks"
+export CFLAGS_WASI="--sysroot=${WASI_SYSROOT} -D_WASI_EMULATED_GETPID -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS"
+export LDFLAGS_WASI="--sysroot=${WASI_SYSROOT} -lwasi-emulated-getpid -lwasi-emulated-signal -lwasi-emulated-process-clocks"
 
 export CFLAGS_SQLITE='-DSQLITE_OMIT_LOAD_EXTENSION=1'
 export LDFLAGS_SQLITE='-lsqlite3'

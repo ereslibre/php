@@ -915,16 +915,16 @@ PHPAPI void php_stat(const char *filename, size_t filename_length, int type, zva
 			RETURN_STRING("link");
 		}
 		switch(ssb.sb.st_mode & S_IFMT) {
+#ifndef WASM_WASI
 		case S_IFIFO: RETURN_STRING("fifo");
+#endif // WASM_WASI
 		case S_IFCHR: RETURN_STRING("char");
 		case S_IFDIR: RETURN_STRING("dir");
 		case S_IFBLK: RETURN_STRING("block");
 		case S_IFREG: RETURN_STRING("file");
-#ifndef WASM_WASI
 #if defined(S_IFSOCK) && !defined(PHP_WIN32)
 		case S_IFSOCK: RETURN_STRING("socket");
 #endif
-#endif // WASM_WASI
 		}
 		php_error_docref(NULL, E_NOTICE, "Unknown file type (%d)", ssb.sb.st_mode&S_IFMT);
 		RETURN_STRING("unknown");
