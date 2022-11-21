@@ -36,6 +36,10 @@ static void ZEND_FASTCALL zend_empty_destroy(zend_reference *ref);
 
 typedef void (ZEND_FASTCALL *zend_rc_dtor_func_t)(zend_refcounted *p);
 
+static void zend_list_free_void_wrapper(zend_resource *res) {
+	zend_list_free(res);
+}
+
 static const zend_rc_dtor_func_t zend_rc_dtor_func[] = {
 	/* IS_UNDEF        */ (zend_rc_dtor_func_t)zend_empty_destroy,
 	/* IS_NULL         */ (zend_rc_dtor_func_t)zend_empty_destroy,
@@ -46,7 +50,7 @@ static const zend_rc_dtor_func_t zend_rc_dtor_func[] = {
 	/* IS_STRING       */ (zend_rc_dtor_func_t)zend_string_destroy,
 	/* IS_ARRAY        */ (zend_rc_dtor_func_t)zend_array_destroy,
 	/* IS_OBJECT       */ (zend_rc_dtor_func_t)zend_objects_store_del,
-	/* IS_RESOURCE     */ (zend_rc_dtor_func_t)zend_list_free,
+	/* IS_RESOURCE     */ (zend_rc_dtor_func_t)zend_list_free_void_wrapper,
 	/* IS_REFERENCE    */ (zend_rc_dtor_func_t)zend_reference_destroy,
 	/* IS_CONSTANT_AST */ (zend_rc_dtor_func_t)zend_ast_ref_destroy
 };

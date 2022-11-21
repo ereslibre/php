@@ -67,6 +67,8 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 #else
 #include "win32/inet.h"
 #endif
+#elif defined(WASM_WASMEDGE)
+# include <netdb.h>
 #endif // WASM_WASI
 
 #if HAVE_ARPA_INET_H

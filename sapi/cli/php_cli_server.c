@@ -774,7 +774,7 @@ static void sapi_cli_server_log_write(int type, char *msg) /* {{{ */
 			memmove(buf, "unknown", sizeof("unknown"));
 		}
 	}
-#ifdef HAVE_FORK
+#if HAVE_FORK
 	if (php_cli_server_workers_max > 1) {
 		fprintf(stderr, "[%ld] [%s] %s\n", (long) getpid(), buf, msg);
 	} else {

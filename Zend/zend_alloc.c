@@ -461,8 +461,8 @@ static void *zend_mm_mmap(size_t size)
 	}
 	return ptr;
 #elif ! HAVE_MMAP
-	void* ptr = malloc(size);
-	memset(ptr, 0, size);
+	void* ptr = malloc(size + ZEND_MMAP_AHEAD);
+	memset(ptr, 0, size + ZEND_MMAP_AHEAD);
 	return ptr;
 #else
 	void *ptr;
@@ -672,8 +672,8 @@ static zend_always_inline int zend_mm_bitset_is_free_range(zend_mm_bitset *bitse
 static void *zend_mm_chunk_alloc_int(size_t size, size_t alignment)
 {
 #if ! HAVE_MMAP
-	void* ptr = aligned_alloc(alignment, size);
-	memset(ptr, 0, size);
+	void* ptr = aligned_alloc(alignment, size + ZEND_MMAP_AHEAD);
+	memset(ptr, 0, size + ZEND_MMAP_AHEAD);
 	return ptr;
 #else
 	void *ptr = zend_mm_mmap(size);

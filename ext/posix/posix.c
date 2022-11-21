@@ -890,8 +890,12 @@ PHP_FUNCTION(posix_ttyname)
 		RETURN_FALSE;
 	}
 #endif
+#else
+	p = emalloc(1);
+	*p = '\0';
 #endif // WASM_WASI
 	RETURN_STRING(p);
+	efree(p);
 }
 /* }}} */
 
