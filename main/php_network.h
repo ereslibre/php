@@ -206,7 +206,7 @@ static inline int php_pollfd_for_ms(php_socket_t fd, int events, int timeout)
 /* emit warning and suggestion for unsafe select(2) usage */
 PHPAPI void _php_emit_fd_setsize_warning(int max_fd);
 
-#ifdef PHP_WIN32
+#if defined(PHP_WIN32) || defined(__wasi__)
 /* it is safe to FD_SET too many fd's under win32; the macro will simply ignore
  * descriptors that go beyond the default FD_SETSIZE */
 # define PHP_SAFE_FD_SET(fd, set)	FD_SET(fd, set)

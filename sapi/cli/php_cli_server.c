@@ -97,6 +97,20 @@
 
 #include "php_cli_process_title.h"
 
+#ifdef WASM_WASMEDGE
+#include "wasmedge_stubs/netdb.h"
+#include "wasmedge_stubs/wasi_socket_ext.h"
+#endif
+
+// #define WASMEDGE_SOCKET_DEBUG
+
+#ifdef WASMEDGE_SOCKET_DEBUG
+#define WSEDEBUG(fmt, ...) fprintf(stderr, fmt __VA_OPT__(,) __VA_ARGS__)
+#else
+#define WSEDEBUG(fmt, ...)
+#endif
+
+
 #define OUTPUT_NOT_CHECKED -1
 #define OUTPUT_IS_TTY 1
 #define OUTPUT_NOT_TTY 0
@@ -834,12 +848,15 @@ static int php_cli_server_poller_ctor(php_cli_server_poller *poller) /* {{{ */
 
 static void php_cli_server_poller_add(php_cli_server_poller *poller, int mode, php_socket_t fd) /* {{{ */
 {
+	WSEDEBUG("php_cli_server_poller_add[%d]: \n", __LINE__);
 	if (mode & POLLIN) {
 		PHP_SAFE_FD_SET(fd, &poller->rfds);
 	}
+	WSEDEBUG("php_cli_server_poller_add[%d]: \n", __LINE__);
 	if (mode & POLLOUT) {
 		PHP_SAFE_FD_SET(fd, &poller->wfds);
 	}
+	WSEDEBUG("php_cli_server_poller_add[%d]: \n", __LINE__);
 	if (fd > poller->max_fd) {
 		poller->max_fd = fd;
 	}
@@ -855,6 +872,27 @@ static void php_cli_server_poller_remove(php_cli_server_poller *poller, int mode
 	}
 #ifndef PHP_WIN32
 	if (fd == poller->max_fd) {
+#ifdef WASM_WASMEDGE
+		php_socket_t new_max_fd = 0;
+
+		for (int i=0; i< poller->rfds.__nfds; ++i)
+		{
+			int candidate = poller->rfds.__fds[i];
+			WSEDEBUG("php_cli_server_poller_remove:[%d] r candidate candidate=%d, new_max_fd=%d fd%d\n", __LINE__, candidate, new_max_fd, fd);
+			if(candidate > new_max_fd)
+				new_max_fd = candidate;
+			}
+
+		for (int i=0; i< poller->wfds.__nfds; ++i)
+		{
+			int candidate = poller->wfds.__fds[i];
+			WSEDEBUG("php_cli_server_poller_remove:[%d] w candidate candidate=%d, new_max_fd=%d fd%d\n", __LINE__, candidate, new_max_fd, fd);
+			if(candidate > new_max_fd)
+				new_max_fd = candidate;
+		}
+		WSEDEBUG("php_cli_server_poller_remove:[%d] CHANGE max_fd=%d, new_max_fd=%d fd%d\n", __LINE__, poller->max_fd, new_max_fd, fd);
+		poller->max_fd = new_max_fd;
+#else
 		while (fd > 0) {
 			fd--;
 			if (PHP_SAFE_FD_ISSET(fd, &poller->rfds) || PHP_SAFE_FD_ISSET(fd, &poller->wfds)) {
@@ -862,6 +900,9 @@ static void php_cli_server_poller_remove(php_cli_server_poller *poller, int mode
 			}
 		}
 		poller->max_fd = fd;
+#endif
+	} else {
+		WSEDEBUG("php_cli_server_poller_remove:[%d] KEEP max_fd=%d fd%d\n", __LINE__, poller->max_fd, fd);
 	}
 #endif
 } /* }}} */
@@ -919,7 +960,31 @@ static int php_cli_server_poller_iter_on_active(php_cli_server_poller *poller, v
 #else
 	php_socket_t fd;
 	const php_socket_t max_fd = poller->max_fd;
+	WSEDEBUG("php_cli_server_poller_iter_on_active[%d]: max_fd=%d\n", __LINE__, max_fd);
 
+#ifdef WASM_WASMEDGE
+	// Note this does not keep the order in terms of fd number, when there are both r and w
+
+	for (int i = 0; i < poller->active.rfds.__nfds; ++i)
+	{
+		fd = poller->active.rfds.__fds[i];
+		WSEDEBUG("php_cli_server_poller_iter_on_active[%d]: PHP_SAFE_FD_ISSET=%d\n", __LINE__, fd);
+		if (SUCCESS != callback(opaque, fd, POLLIN))
+		{
+					retval = FAILURE;
+				}
+		}
+
+	for (int i = 0; i < poller->active.wfds.__nfds; ++i)
+	{
+		fd = poller->active.wfds.__fds[i];
+		WSEDEBUG("php_cli_server_poller_iter_on_active[%d]: PHP_SAFE_FD_ISSET=%d\n", __LINE__, fd);
+		if (SUCCESS != callback(opaque, fd, POLLOUT))
+		{
+					retval = FAILURE;
+				}
+		}
+#else
 	for (fd=0 ; fd<=max_fd ; fd++)  {
 		if (PHP_SAFE_FD_ISSET(fd, &poller->active.rfds)) {
 				if (SUCCESS != callback(opaque, fd, POLLIN)) {
@@ -932,6 +997,7 @@ static int php_cli_server_poller_iter_on_active(php_cli_server_poller *poller, v
 				}
 		}
 	}
+#endif // WASM_WASMEDGE
 #endif
 	return retval;
 } /* }}} */
@@ -1271,13 +1337,28 @@ static void php_cli_server_logf(int type, const char *format, ...) /* {{{ */
 
 static php_socket_t php_network_listen_socket(const char *host, int *port, int socktype, int *af, socklen_t *socklen, zend_string **errstr) /* {{{ */
 {
+	WSEDEBUG("php_network_listen_socket[%d]: '%s', '%d'\n", __LINE__, host, *port);
 	php_socket_t retval = SOCK_ERR;
 	int err = 0;
 	struct sockaddr *sa = NULL, **p, **sal;
 
 	int num_addrs = php_network_getaddresses(host, socktype, &sal, errstr);
 	if (num_addrs == 0) {
+#ifdef WASM_WASMEDGE
+		// This is attempt to copy-paste and initialize the addresses based on the code in php_network_getaddresses,
+		// but I failed to get it right, so it is abandoned (see the commented out free calls at the end of the method)
+		*sal = safe_emalloc(2, sizeof(*sal), 0);
+		struct sockaddr **sap;
+		sap = *sal;
+		*sap = emalloc(sizeof(struct sockaddr_in));
+		(*sap)->sa_family = AF_INET;
+		((struct sockaddr_in *)*sap)->sin_addr.s_addr = INADDR_ANY;
+		((struct sockaddr_in *)*sap)->sin_port = *port;
+		++sap;
+		*sap = NULL;
+#else
 		return -1;
+#endif
 	}
 	for (p = sal; *p; p++) {
 		if (sa) {
@@ -1285,11 +1366,18 @@ static php_socket_t php_network_listen_socket(const char *host, int *port, int s
 			sa = NULL;
 		}
 
+#ifdef WASM_WASMEDGE
+		(*p)->sa_family = AF_INET;
+#endif
+
+		WSEDEBUG("php_network_listen_socket[%d]:\n", __LINE__);
 		retval = socket((*p)->sa_family, socktype, 0);
-		if (retval == SOCK_ERR) {
+		if (retval == SOCK_ERR)
+		{
 			continue;
 		}
 
+		WSEDEBUG("php_network_listen_socket[%d]: socket=%d sa_family=%d \n", __LINE__, retval, (*p)->sa_family);
 		switch ((*p)->sa_family) {
 #if HAVE_GETADDRINFO && HAVE_IPV6
 		case AF_INET6:
@@ -1301,8 +1389,15 @@ static php_socket_t php_network_listen_socket(const char *host, int *port, int s
 #endif
 		case AF_INET:
 			sa = pemalloc(sizeof(struct sockaddr_in), 1);
+#ifdef WASM_WASMEDGE
+			memset(sa, 0, sizeof(struct sockaddr_in));
+			((struct sockaddr_in *)sa)->sin_family = AF_INET;
+			((struct sockaddr_in *)sa)->sin_addr.s_addr = INADDR_ANY;
+			((struct sockaddr_in *)sa)->sin_port = *port;
+#else 
 			*(struct sockaddr_in *)sa = *(struct sockaddr_in *)*p;
 			((struct sockaddr_in *)sa)->sin_port = htons(*port);
+#endif
 			*socklen = sizeof(struct sockaddr_in);
 			break;
 		default:
@@ -1327,7 +1422,9 @@ static php_socket_t php_network_listen_socket(const char *host, int *port, int s
 #endif
 
 		if (bind(retval, sa, *socklen) == SOCK_CONN_ERR) {
+			WSEDEBUG("php_network_listen_socket[%d]: bind failed \n", __LINE__);
 			err = php_socket_errno();
+			WSEDEBUG("php_network_listen_socket[%d]: bind failed %d \n", __LINE__, err);
 			if (err == SOCK_EINVAL || err == SOCK_EADDRINUSE) {
 				goto out;
 			}
@@ -1337,12 +1434,17 @@ static php_socket_t php_network_listen_socket(const char *host, int *port, int s
 		}
 		err = 0;
 
+		WSEDEBUG("php_network_listen_socket[%d]: \n", __LINE__);
 		*af = sa->sa_family;
-		if (*port == 0) {
+		WSEDEBUG("php_network_listen_socket[%d]: \n", __LINE__);
+		if (*port == 0)
+		{
+#ifndef WASM_WASMEDGE
 			if (getsockname(retval, sa, socklen)) {
 				err = php_socket_errno();
 				goto out;
 			}
+#endif
 			switch (sa->sa_family) {
 #if HAVE_GETADDRINFO && HAVE_IPV6
 			case AF_INET6:
@@ -1350,7 +1452,9 @@ static php_socket_t php_network_listen_socket(const char *host, int *port, int s
 				break;
 #endif
 			case AF_INET:
+				WSEDEBUG("php_network_listen_socket[%d]: \n", __LINE__);
 				*port = ntohs(((struct sockaddr_in *)sa)->sin_port);
+				WSEDEBUG("php_network_listen_socket[%d]: \n", __LINE__);
 				break;
 			}
 		}
@@ -1358,22 +1462,28 @@ static php_socket_t php_network_listen_socket(const char *host, int *port, int s
 		break;
 	}
 
+	WSEDEBUG("php_network_listen_socket[%d]: \n", __LINE__);
 	if (retval == SOCK_ERR) {
 		goto out;
 	}
 
+	WSEDEBUG("php_network_listen_socket[%d]: \n", __LINE__);
 	if (listen(retval, SOMAXCONN)) {
+		WSEDEBUG("php_network_listen_socket[%d]: \n", __LINE__);
 		err = php_socket_errno();
 		goto out;
 	}
+	WSEDEBUG("php_network_listen_socket[%d]: \n", __LINE__);
 
 out:
+#ifndef WASM_WASMEDGE
 	if (sa) {
 		pefree(sa, 1);
 	}
 	if (sal) {
 		php_network_freeaddresses(sal);
 	}
+#endif
 	if (err) {
 		if (ZEND_VALID_SOCKET(retval)) {
 			closesocket(retval);
@@ -2092,12 +2202,15 @@ fail:
 
 static int php_cli_server_dispatch_script(php_cli_server *server, php_cli_server_client *client) /* {{{ */
 {
+	WSEDEBUG("php_cli_server_dispatch_script[%d]: \n", __LINE__);
 	if (strlen(client->request.path_translated) != client->request.path_translated_len) {
+		WSEDEBUG("php_cli_server_dispatch_script[%d]: \n", __LINE__);
 		/* can't handle paths that contain nul bytes */
 		return php_cli_server_send_error_page(server, client, 400);
 	}
 	{
 		zend_file_handle zfd;
+		WSEDEBUG("php_cli_server_dispatch_script[%d]: '%s'\n", __LINE__, SG(request_info).path_translated);
 		zend_stream_init_filename(&zfd, SG(request_info).path_translated);
 		zend_try {
 			php_execute_script(&zfd);
@@ -2247,6 +2360,7 @@ static int php_cli_server_dispatch_router(php_cli_server *server, php_cli_server
 
 static int php_cli_server_dispatch(php_cli_server *server, php_cli_server_client *client) /* {{{ */
 {
+	WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 	int is_static_file  = 0;
 	const char *ext = client->request.ext;
 
@@ -2255,10 +2369,14 @@ static int php_cli_server_dispatch(php_cli_server *server, php_cli_server_client
 	 || (ext[0] != 'p' && ext[0] != 'P') || (ext[1] != 'h' && ext[1] != 'H') || (ext[2] != 'p' && ext[2] != 'P')
 	 || !client->request.path_translated) {
 		is_static_file = 1;
+		WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 	}
 
+	WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 	if (server->router || !is_static_file) {
+		WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 		if (FAILURE == php_cli_server_request_startup(server, client)) {
+			WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 			SG(server_context) = NULL;
 			php_cli_server_close_connection(server, client);
 			destroy_request_info(&SG(request_info));
@@ -2266,43 +2384,54 @@ static int php_cli_server_dispatch(php_cli_server *server, php_cli_server_client
 		}
 	}
 
+	WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 	if (server->router) {
 		if (!php_cli_server_dispatch_router(server, client)) {
+			WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 			php_cli_server_request_shutdown(server, client);
 			return SUCCESS;
 		}
 	}
 
+	WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 	if (!is_static_file) {
-		if (SUCCESS == php_cli_server_dispatch_script(server, client)
-				|| SUCCESS != php_cli_server_send_error_page(server, client, 500)) {
+		if (SUCCESS == php_cli_server_dispatch_script(server, client) || SUCCESS != php_cli_server_send_error_page(server, client, 500)) {
+			WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 			if (SG(sapi_headers).http_response_code == 304) {
+				WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 				SG(sapi_headers).send_default_content_type = 0;
 			}
+			WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 			php_cli_server_request_shutdown(server, client);
 			return SUCCESS;
 		}
 	} else {
+		WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 		if (server->router) {
+			WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 			static int (*send_header_func)(sapi_headers_struct *);
 			send_header_func = sapi_module.send_headers;
 			/* do not generate default content type header */
 			SG(sapi_headers).send_default_content_type = 0;
 			/* we don't want headers to be sent */
 			sapi_module.send_headers = sapi_cli_server_discard_headers;
+			WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 			php_request_shutdown(0);
 			sapi_module.send_headers = send_header_func;
 			SG(sapi_headers).send_default_content_type = 1;
 			SG(rfc1867_uploaded_files) = NULL;
 		}
 		if (SUCCESS != php_cli_server_begin_send_static(server, client)) {
+			WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 			php_cli_server_close_connection(server, client);
 		}
+		WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 		SG(server_context) = NULL;
 		return SUCCESS;
 	}
 
 	SG(server_context) = NULL;
+	WSEDEBUG("php_cli_server_dispatch[%d]: \n", __LINE__);
 	destroy_request_info(&SG(request_info));
 	return SUCCESS;
 }
@@ -2421,7 +2550,7 @@ static int php_cli_server_ctor(php_cli_server *server, const char *addr, const c
 		}
 	}
 	if (!p) {
-		fprintf(stderr, "Invalid address: %s\n", addr);
+		WSEDEBUG("Invalid address: %s\n", addr);
 		retval = FAILURE;
 		goto out;
 	}
@@ -2435,19 +2564,36 @@ static int php_cli_server_ctor(php_cli_server *server, const char *addr, const c
 		retval = FAILURE;
 		goto out;
 	}
+	WSEDEBUG("php_server_ctor[%d]: server_sock=%d\n", __LINE__, server_sock);
 	server->server_sock = server_sock;
+	WSEDEBUG("php_server_ctor[%d]: \n", __LINE__);
 
 	err = php_cli_server_poller_ctor(&server->poller);
-	if (SUCCESS != err) {
+	WSEDEBUG("php_server_ctor[%d]: \n", __LINE__);
+	if (SUCCESS != err)	{
+		WSEDEBUG("php_server_ctor[%d]: \n", __LINE__);
 		goto out;
 	}
 
+	WSEDEBUG("php_server_ctor[%d]: BEFORE php_cli_server_poller_add\n", __LINE__);
 	php_cli_server_poller_add(&server->poller, POLLIN, server_sock);
+	WSEDEBUG("php_server_ctor[%d]: AFTER \n", __LINE__);
+
+	WSEDEBUG("php_server_ctor[%d]: rfds=[", __LINE__);
+	for (int i = 0; i < server->poller.rfds.__nfds; ++i)
+		WSEDEBUG("%d, ", server->poller.rfds.__fds[i]);
+
+	WSEDEBUG("], wfds=[");
+	for (int i = 0; i < server->poller.wfds.__nfds; ++i)
+		WSEDEBUG("%d, ", server->poller.wfds.__fds[i]);
+	WSEDEBUG("]\n");
 
 	server->host = host;
 	server->port = port;
 
+	WSEDEBUG("php_server_ctor[%d]: \n", __LINE__);
 	zend_hash_init(&server->clients, 0, NULL, php_cli_server_client_dtor_wrapper, 1);
+	WSEDEBUG("php_server_ctor[%d]: \n", __LINE__);
 
 	{
 		size_t document_root_len = strlen(document_root);
@@ -2460,7 +2606,9 @@ static int php_cli_server_ctor(php_cli_server *server, const char *addr, const c
 		server->document_root_len = document_root_len;
 	}
 
+	WSEDEBUG("php_server_ctor[%d]: \n", __LINE__);
 	if (router) {
+		WSEDEBUG("php_server_ctor[%d]: \n", __LINE__);
 		size_t router_len = strlen(router);
 		_router = pestrndup(router, router_len, 1);
 		if (!_router) {
@@ -2470,15 +2618,18 @@ static int php_cli_server_ctor(php_cli_server *server, const char *addr, const c
 		server->router = _router;
 		server->router_len = router_len;
 	} else {
+		WSEDEBUG("php_server_ctor[%d]: \n", __LINE__);
 		server->router = NULL;
 		server->router_len = 0;
 	}
 
+	WSEDEBUG("php_server_ctor[%d]: \n", __LINE__);
 	if (php_cli_server_mime_type_ctor(server, mime_type_map) == FAILURE) {
 		retval = FAILURE;
 		goto out;
 	}
 
+	WSEDEBUG("php_server_ctor[%d]: \n", __LINE__);
 	server->is_running = 1;
 out:
 	if (retval != SUCCESS) {
@@ -2500,6 +2651,7 @@ out:
 
 static int php_cli_server_recv_event_read_request(php_cli_server *server, php_cli_server_client *client) /* {{{ */
 {
+	WSEDEBUG("php_cli_server_recv_event_read_request[%d]: \n", __LINE__);
 	char *errstr = NULL;
 	int status = php_cli_server_client_read_request(client, &errstr);
 	if (status < 0) {
@@ -2564,6 +2716,7 @@ typedef struct php_cli_server_do_event_for_each_fd_callback_params {
 
 static int php_cli_server_do_event_for_each_fd_callback(void *_params, php_socket_t fd, int event) /* {{{ */
 {
+	WSEDEBUG("php_cli_server_do_event_for_each_fd_callback[%d]: fd=%d\n", __LINE__, fd);
 	php_cli_server_do_event_for_each_fd_callback_params *params = _params;
 	php_cli_server *server = params->server;
 	if (server->server_sock == fd) {
@@ -2572,6 +2725,7 @@ static int php_cli_server_do_event_for_each_fd_callback(void *_params, php_socke
 		socklen_t socklen = server->socklen;
 		struct sockaddr *sa = pemalloc(server->socklen, 1);
 		client_sock = accept(server->server_sock, sa, &socklen);
+		WSEDEBUG("php_cli_server_do_event_for_each_fd_callback[%d]: accept returned client_sock=%d\n", __LINE__, client_sock);
 		if (!ZEND_VALID_SOCKET(client_sock)) {
 			if (php_cli_server_log_level >= PHP_CLI_SERVER_LOG_ERROR) {
 				char *errstr = php_socket_strerror(php_socket_errno(), NULL, 0);
@@ -2582,12 +2736,14 @@ static int php_cli_server_do_event_for_each_fd_callback(void *_params, php_socke
 			pefree(sa, 1);
 			return SUCCESS;
 		}
+		WSEDEBUG("php_cli_server_do_event_for_each_fd_callback[%d]: php_set_sock_blocking fd=%d, client_sock=%d\n", __LINE__, fd, client_sock);
 		if (SUCCESS != php_set_sock_blocking(client_sock, 0)) {
 			pefree(sa, 1);
 			closesocket(client_sock);
 			return SUCCESS;
 		}
 		client = pemalloc(sizeof(php_cli_server_client), 1);
+		WSEDEBUG("php_cli_server_do_event_for_each_fd_callback[%d]: \n", __LINE__);
 		if (FAILURE == php_cli_server_client_ctor(client, server, client_sock, sa, socklen)) {
 			php_cli_server_logf(PHP_CLI_SERVER_LOG_ERROR, "Failed to create a new request object");
 			pefree(sa, 1);
@@ -2595,20 +2751,30 @@ static int php_cli_server_do_event_for_each_fd_callback(void *_params, php_socke
 			return SUCCESS;
 		}
 
+		WSEDEBUG("php_cli_server_do_event_for_each_fd_callback[%d]: Accepted %s\n", __LINE__, client->addr_str);
 		php_cli_server_logf(PHP_CLI_SERVER_LOG_MESSAGE, "%s Accepted", client->addr_str);
 
+		WSEDEBUG("php_cli_server_do_event_for_each_fd_callback[%d]: h=%ul, pData=%p\n", __LINE__, client_sock, client);
 		zend_hash_index_update_ptr(&server->clients, client_sock, client);
 
+		WSEDEBUG("php_cli_server_do_event_for_each_fd_callback[%d]: Accepted %s\n", __LINE__, client->addr_str);
 		php_cli_server_poller_add(&server->poller, POLLIN, client->sock);
 	} else {
 		php_cli_server_client *client;
+		WSEDEBUG("php_cli_server_do_event_for_each_fd_callback[%d]: looking for client for fd=%d\n", __LINE__, fd);
 		if (NULL != (client = zend_hash_index_find_ptr(&server->clients, fd))) {
 			if (event & POLLIN) {
+				WSEDEBUG("php_cli_server_do_event_for_each_fd_callback[%d]: calling rhandler fd=%d\n", __LINE__, fd);
 				params->rhandler(server, client);
 			}
 			if (event & POLLOUT) {
+				WSEDEBUG("php_cli_server_do_event_for_each_fd_callback[%d]: calling whandler fd=%d\n", __LINE__, fd);
 				params->whandler(server, client);
 			}
+		}
+		else
+		{
+			WSEDEBUG("php_cli_server_do_event_for_each_fd_callback[%d]: NO CLIENT FOUND\n", __LINE__);
 		}
 	}
 	return SUCCESS;
@@ -2627,18 +2793,43 @@ static void php_cli_server_do_event_for_each_fd(php_cli_server *server, int(*rha
 
 static int php_cli_server_do_event_loop(php_cli_server *server) /* {{{ */
 {
+	WSEDEBUG("php_cli_server_do_event_loop[%d]: rfds=[", __LINE__);
+	for (int i = 0; i < server->poller.rfds.__nfds; ++i)
+		WSEDEBUG("%d, ", server->poller.rfds.__fds[i]);
+
+	WSEDEBUG("], wfds=[");
+	for (int i = 0; i < server->poller.wfds.__nfds; ++i)
+		WSEDEBUG("%d, ", server->poller.wfds.__fds[i]);
+	WSEDEBUG("]\n");
+
 	int retval = SUCCESS;
-	while (server->is_running) {
-		struct timeval tv = { 1, 0 };
+	int iteration = 0;
+	while (server->is_running)
+	{
+		WSEDEBUG("php_cli_server_do_event_loop[%d]: iteration=%d\n", __LINE__, iteration++);
+		struct timeval tv = {1, 0};
 		int n = php_cli_server_poller_poll(&server->poller, &tv);
-		if (n > 0) {
+		if (n > 0)
+		{
+			WSEDEBUG("php_cli_server_do_event_loop[%d]: n=%d\n", __LINE__, n);
+			WSEDEBUG("php_cli_server_do_event_loop[%d]: ACTIVE rfds=[", __LINE__);
+			for (int i = 0; i < server->poller.active.rfds.__nfds; ++i)
+				WSEDEBUG("%d, ", server->poller.active.rfds.__fds[i]);
+
+			WSEDEBUG("], wfds=[");
+			for (int i = 0; i < server->poller.active.wfds.__nfds; ++i)
+				WSEDEBUG("%d, ", server->poller.active.wfds.__fds[i]);
+			WSEDEBUG("]\n");
 			php_cli_server_do_event_for_each_fd(server,
 					php_cli_server_recv_event_read_request,
 					php_cli_server_send_event);
+			WSEDEBUG("php_cli_server_do_event_loop[%d]: \n", __LINE__);
 		} else if (n == 0) {
+			WSEDEBUG("php_cli_server_do_event_loop[%d]: n=0\n", __LINE__);
 			/* do nothing */
 		} else {
 			int err = php_socket_errno();
+			WSEDEBUG("php_cli_server_do_event_loop[%d]: n=%d, error %d\n", __LINE__, n, err);
 			if (err != SOCK_EINTR) {
 				if (php_cli_server_log_level >= PHP_CLI_SERVER_LOG_ERROR) {
 					char *errstr = php_socket_strerror(err, NULL, 0);
@@ -2664,6 +2855,7 @@ static void php_cli_server_sigint_handler(int sig) /* {{{ */
 
 int do_cli_server(int argc, char **argv) /* {{{ */
 {
+	WSEDEBUG("Calling do_cli_server");
 	char *php_optarg = NULL;
 	int php_optind = 1;
 	int c;

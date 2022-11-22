@@ -745,6 +745,25 @@ if test "$ac_cv__asm_goto" = yes; then
   AC_DEFINE(HAVE_ASM_GOTO,1,[Define if asm goto support])
 fi
 
+dnl Check wasmedge wasi.
+PHP_ARG_WITH([wasmedge],
+  [whether to build for wasmedge runtime],
+  [AS_HELP_STRING([--with-wasmedge],
+    [Build with support for wasmedge socket extensions])],
+  [yes],
+  [no])
+
+if test "$PHP_WASMEDGE" != "no"; then
+  case $host_alias in
+    *wasm*)
+      PHP_ADD_SOURCES(wasmedge_stubs, wasi_socket_ext.c, -DWASM_WASMEDGE)
+      ;;
+    *)
+      AC_MSG_ERROR([--with-wasmedge is only valid for wasm builds!])
+    ;;
+  esac
+fi
+
 dnl Check valgrind support.
 PHP_ARG_WITH([valgrind],
   [whether to enable valgrind support],
