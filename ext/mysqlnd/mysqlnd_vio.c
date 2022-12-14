@@ -56,18 +56,7 @@ mysqlnd_set_sock_no_delay(php_stream * stream)
 static int
 mysqlnd_set_sock_keepalive(php_stream * stream)
 {
-	int socketd = ((php_netstream_data_t*)stream->abstract)->socket;
-	int ret = SUCCESS;
-	int flag = 1;
-	int result = setsockopt(socketd, SOL_SOCKET, SO_KEEPALIVE, (char *) &flag, sizeof(int));
-
-	DBG_ENTER("mysqlnd_set_sock_keepalive");
-
-	if (result == -1) {
-		ret = FAILURE;
-	}
-
-	DBG_RETURN(ret);
+	DBG_RETURN(SUCCESS);
 }
 /* }}} */
 

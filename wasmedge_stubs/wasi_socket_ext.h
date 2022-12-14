@@ -2,6 +2,8 @@
 
 #include <sys/socket.h>
 
+#include <netinet/in.h>
+
 // struct sockaddr_in {
 // 	sa_family_t sin_family;
 // 	in_port_t sin_port;

@@ -59,7 +59,9 @@ PHPAPI php_stream *_php_stream_xport_create(const char *name, size_t namelen, in
 		int *error_code
 		STREAMS_DC)
 {
-	php_stream *stream = NULL;
+  fprintf(stderr, "_php_stream_xport_create: %s; %d\n", name, persistent_id == NULL);
+
+        php_stream *stream = NULL;
 	php_stream_transport_factory factory = NULL;
 	const char *p, *protocol = NULL;
 	size_t n = 0;
@@ -108,6 +110,8 @@ PHPAPI php_stream *_php_stream_xport_create(const char *name, size_t namelen, in
 		n = 3;
 	}
 
+	fprintf(stderr, "protocol: %s\n", protocol);
+
 	if (protocol) {
 		if (NULL == (factory = zend_hash_str_find_ptr(&xport_hash, protocol, n))) {
 			char wrapper_name[32];
@@ -129,9 +133,13 @@ PHPAPI php_stream *_php_stream_xport_create(const char *name, size_t namelen, in
 		return NULL;
 	}
 
+	fprintf(stderr, "factory is %d\n", factory);
+
 	stream = (factory)(protocol, n,
 			(char*)name, namelen, persistent_id, options, flags, timeout,
 			context STREAMS_REL_CC);
+
+	fprintf(stderr, "stream is %d; flags: %d\n", stream, flags);
 
 	if (stream) {
 		php_stream_context_set(stream, context);

@@ -29,6 +29,9 @@
 #include <sys/un.h>
 #endif
 
+#include <sys/socket.h>
+#include <sys/un.h>
+
 #ifndef MSG_DONTWAIT
 # define MSG_DONTWAIT 0
 #endif
@@ -217,9 +220,9 @@ static int php_sockop_close(php_stream *stream, int close_handle)
 				n = php_pollfd_for_ms(sock->socket, POLLOUT, 500);
 			} while (n == -1 && php_socket_errno() == EINTR);
 #endif
-#ifndef WASM_WASI
+			//#ifndef WASM_WASI
 			closesocket(sock->socket);
-#endif // WASM_WASI
+			//#endif // WASM_WASI
 			sock->socket = SOCK_ERR;
 		}
 
@@ -730,6 +733,8 @@ static inline int php_tcp_sockop_bind(php_stream *stream, php_netstream_data_t *
 static inline int php_tcp_sockop_connect(php_stream *stream, php_netstream_data_t *sock,
 		php_stream_xport_param *xparam)
 {
+	fprintf(stderr, "php_tcp_sockop_connect[%d]\n", __LINE__);
+
 	char *host = NULL, *bindto = NULL;
 	int portno, bindport = 0;
 	int err = 0;
@@ -825,6 +830,7 @@ static inline int php_tcp_sockop_connect(php_stream *stream, php_netstream_data_
 			);
 
 	ret = sock->socket == -1 ? -1 : 0;
+	fprintf(stderr, "ereslibre: ret would be %d (err: %d; err text: %s)\n", ret, err, xparam->outputs.error_text);
 	xparam->outputs.error_code = err;
 
 	if (host) {

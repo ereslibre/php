@@ -526,6 +526,8 @@ PHP_FUNCTION(get_meta_tags)
    Read the entire file into a string */
 PHP_FUNCTION(file_get_contents)
 {
+	fprintf(stderr, "file_get_contents[%d]\n", __LINE__);
+
 	char *filename;
 	size_t filename_len;
 	zend_bool use_include_path = 0;

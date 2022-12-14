@@ -96,10 +96,10 @@ PHPAPI MYSQLND_DEBUG * mysqlnd_debug_init(const char * skip_functions[]);
 #define DBG_PROFILE_END_TIME(duration)
 #endif
 
-#define DBG_INF_EX(dbg_obj, msg)		do { if (dbg_skip_trace == FALSE && (dbg_obj)) (dbg_obj)->m->log((dbg_obj), __LINE__, __FILE__, -1, "info : ", (msg)); } while (0)
-#define DBG_ERR_EX(dbg_obj, msg)		do { if (dbg_skip_trace == FALSE && (dbg_obj)) (dbg_obj)->m->log((dbg_obj), __LINE__, __FILE__, -1, "error: ", (msg)); } while (0)
-#define DBG_INF_FMT_EX(dbg_obj, ...)	do { if (dbg_skip_trace == FALSE && (dbg_obj)) (dbg_obj)->m->log_va((dbg_obj), __LINE__, __FILE__, -1, "info : ", __VA_ARGS__); } while (0)
-#define DBG_ERR_FMT_EX(dbg_obj, ...)	do { if (dbg_skip_trace == FALSE && (dbg_obj)) (dbg_obj)->m->log_va((dbg_obj), __LINE__, __FILE__, -1, "error: ", __VA_ARGS__); } while (0)
+#define DBG_INF_EX(dbg_obj, msg)		do { if (dbg_obj) (dbg_obj)->m->log((dbg_obj), __LINE__, __FILE__, -1, "info : ", (msg)); } while (0)
+#define DBG_ERR_EX(dbg_obj, msg)		do { if (dbg_obj) (dbg_obj)->m->log((dbg_obj), __LINE__, __FILE__, -1, "error: ", (msg)); } while (0)
+#define DBG_INF_FMT_EX(dbg_obj, ...)	do { if (dbg_obj) (dbg_obj)->m->log_va((dbg_obj), __LINE__, __FILE__, -1, "info : ", __VA_ARGS__); } while (0)
+#define DBG_ERR_FMT_EX(dbg_obj, ...)	do { if (dbg_obj) (dbg_obj)->m->log_va((dbg_obj), __LINE__, __FILE__, -1, "error: ", __VA_ARGS__); } while (0)
 
 #define DBG_BLOCK_ENTER_EX(dbg_obj, block_name) DBG_BLOCK_ENTER_EX2((dbg_obj), (MYSQLND_DEBUG *) NULL, (block_name))
 #define DBG_BLOCK_LEAVE_EX(dbg_obj)				DBG_BLOCK_LEAVE_EX2((dbg_obj), (MYSQLND_DEBUG *) NULL)
